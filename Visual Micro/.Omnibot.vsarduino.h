@@ -1,7 +1,7 @@
 #ifndef _VSARDUINO_H_
 #define _VSARDUINO_H_
-//Board = Arduino Uno
-#define __AVR_ATmega328P__
+//Board = Arduino Mega 2560 or Mega ADK
+#define __AVR_ATmega2560__
 #define ARDUINO 104
 #define __AVR__
 #define F_CPU 16000000L
@@ -31,11 +31,12 @@ extern "C" void __cxa_pure_virtual() {;}
 void testLeftEyeLedPostions();
 void testRighEyeLedPositions();
 void flashingEyes();
-void blinkEyes();
+void blinkEyeRight();
+void blinkEyeLeft();
 void eyesOpen();
 void eyesClose();
 
-#include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\standard\pins_arduino.h" 
+#include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Omnibot.ino"
 #endif
