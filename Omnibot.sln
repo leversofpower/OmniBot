@@ -3,6 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Omnibot", "Omnibot.vcxproj", "{97FEB118-D818-4FF5-AD94-752DD587780C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{5EBA8A67-3718-4254-8CB9-9740F06D009F}"
+	ProjectSection(SolutionItems) = preProject
+		CodeSnippets.txt = CodeSnippets.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32

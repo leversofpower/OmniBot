@@ -1,307 +1,480 @@
-const int ledPinRight7 = 26;
-const int ledPinRight4 = 27;
-const int ledPinRight6 = 28;
-const int ledPinRight3 = 29;
-const int ledPinRight5 = 30;
-const int ledPinRight2 = 31;
-const int ledPinRight0 = 32;
-const int ledPinRight10 = 33; 
-const int ledPinRight12 = 34;
-const int ledPinRight9 = 35;
-const int ledPinRight11 = 36;
-const int ledPinRight8 = 37;
-const int ledPinRight1 = 38; 
+/* Notes
+ch1
+rest 1524 - 1532 / Varience 8
+high 1876 -1985 direction down / Varience 9
+low 1053 - 1065 direction up / Varience 12 
 
-const int ledPinLeft0 = 40;
-const int ledPinLeft10 = 41;
-const int ledPinLeft12 = 42;
-const int ledPinLeft9 = 43;
-const int ledPinLeft11 = 44; 
-const int ledPinLeft8 = 45; 
-const int ledPinLeft7 = 46; 
-const int ledPinLeft4 = 47; 
-const int ledPinLeft6 = 48; 
-const int ledPinLeft3 = 49; 
-const int ledPinLeft5 = 50; 
-const int ledPinLeft2 = 51; 
-const int ledPinLeft1 = 52;
+ch2 rest 1502 - 1509 / Varience 7
+high 1968 - 1972 direction right / Varience 4
+low 1056 - 1062 direction left / Varience 6
+Average Varience 7.6
 
-int ledState = LOW;             // ledState used to set the LED
-int ledStateInverse = HIGH;
-unsigned long currentMillis = 0;
-long previousMillis = 0;
-long previousMillisLeft = 0;        // will store last time LED was updated
-long previousMillisRight = 0;  
+TODO:
+Rotation
+motors are all moving forward one should be moving backward and the other forward
 
-long interval = 30;           // interval at which to blink (milliseconds)
-long blinkInterval = 5000;
+State Based LCD Display:
+when moving just display MOTOR PWM
+
+Right turn seems to be much weaker then left turn?
+
+Create LCD Message que
+*/
+
+//#include <Wire.h>
+//#include <LiquidCrystal_I2C.h>
+/*LCD Display */
+//LiquidCrystal_I2C lcd(0x27,16,2); // set the LCD address to 0x27
+int LCDPageNumber = 0;
+
+/* Pin Assignments */
+const int RCcontrolY = 9;
+const int RCcontrolX = 8;
+
+const int motorLeftForward = 3;
+const int motorLeftBackward = 4;
+const int motorLeftPWM = 5; //2
+
+const int motorRightForward = 7;
+const int motorRightBackward = 6; 
+const int motorRightPWM = 2; //5
+
+const int AnalogVoltageDividerPin = 0;
+const int wheelLefttHallSensorPin = 7;
+const int wheelRightHallSensorPin = 6;
+
+unsigned long UptimeMillis;
+
+/* Serial Display */
+const int serialPrintRefreshRateMilli = 1000;
+unsigned long serialPrintLastUpdateMilli = 0;
+
+int RCcontrolYPWM = 0;
+int RCcontrolYPWMTop = 1985;
+int RCcontrolYPWMMiddle = 1540;
+int RCcontrolYPWMBottom = 1061;
+int RCcontrolYPWMRangeSpread = 0;
+int RCcontrolYPWMTopDynamic = RCcontrolYPWMBottom;
+int RCcontrolYPWMMiddleDynamic = 0;
+int RCcontrolYPWMBottomDynamic = RCcontrolYPWMTop;
+int RCcontrolXPWM = 0;
+int RCcontrolXPWMTop = 1972;
+int RCcontrolXPWMMiddle = 1510;
+int RCcontrolXPWMBottom = 1059; 
+int RCcontrolXPWMRangeSpread = 0;
+int RCcontrolXPWMTopDynamic = RCcontrolXPWMBottom;
+int RCcontrolXPWMMiddleDynamic = 0;
+int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
+int RCcontrolPWMYBuffer = 20;
+int RCcontrolPWMXBuffer = 20;
+
+int motorLeftCurentPWM = 0;
+int motorRightCurentPWM = 0;
+int motorForwardPWMcompensation = 10;
+int motorBackwardPWMcompensation = 18;
+int motorMinimumPWMforActuation = 200;
+float motorBatteryVoltageNow = 0.0;
+float motorBatteryVoltageHigh = 0.0;
+float motorBatteryVoltageLow = 12.0;
+
+/* Wheel Hall Sensors */
+int wheelHallSensorLeft = 0;
+int wheelHallSensorRight = 0;
+int wheelRotationsLeft = 0;
+int WheelRotationsRight = 0;
+
+/* Enumerations */
+const int displayVerbose = 1;
+
+// States 
+const int stateUndefined = 0;
+const int stateNoRCSignal = 5;
+const int stateStationary = 10;
+const int stateMoveForward = 20;
+const int stateMoveForwardSteerLeft = 22;
+const int stateMoveForwardSteerRight = 24;
+const int stateMoveBackward = 30;
+const int stateMoveBackwardSteerLeft = 32;
+const int stateMoveBackwardSteerRight = 34;
+const int stateMoveRotateLeft = 40;
+const int stateMoveRotateRight = 50;
+
+int automationState = stateUndefined;
 
 void setup() {
-	pinMode(ledPinRight0, OUTPUT); 
-	pinMode(ledPinRight1, OUTPUT); 
-	pinMode(ledPinRight2, OUTPUT); 
-	pinMode(ledPinRight3, OUTPUT); 
-	pinMode(ledPinRight4, OUTPUT); 
-	pinMode(ledPinRight5, OUTPUT); 
-	pinMode(ledPinRight6, OUTPUT); 
-	pinMode(ledPinRight7, OUTPUT); 
-	pinMode(ledPinRight8, OUTPUT); 
-	pinMode(ledPinRight9, OUTPUT); 
-	pinMode(ledPinRight10, OUTPUT);  
-	pinMode(ledPinRight11, OUTPUT); 
-	pinMode(ledPinRight12, OUTPUT);
+	Serial.begin(9600);
+	//lcd.init();
+	//lcd.backlight();
 
-	pinMode(ledPinLeft0, OUTPUT); 
-	pinMode(ledPinLeft1, OUTPUT); 
-	pinMode(ledPinLeft2, OUTPUT); 
-	pinMode(ledPinLeft3, OUTPUT); 
-	pinMode(ledPinLeft4, OUTPUT); 
-	pinMode(ledPinLeft5, OUTPUT); 
-	pinMode(ledPinLeft6, OUTPUT); 
-	pinMode(ledPinLeft7, OUTPUT); 
-	pinMode(ledPinLeft8, OUTPUT); 
-	pinMode(ledPinLeft9, OUTPUT); 
-	pinMode(ledPinLeft10, OUTPUT); 
-	pinMode(ledPinLeft11, OUTPUT); 
-	pinMode(ledPinLeft12, OUTPUT);
+	pinMode(RCcontrolY, INPUT);
+	pinMode(RCcontrolX, INPUT);
+
+	pinMode(motorLeftPWM, OUTPUT); 
+	pinMode(motorLeftBackward, OUTPUT); 
+	pinMode(motorLeftForward, OUTPUT); 
+
+	pinMode(motorRightPWM, OUTPUT); 
+	pinMode(motorRightBackward, OUTPUT); 
+	pinMode(motorRightForward, OUTPUT);
+
+	pinMode(wheelLefttHallSensorPin, INPUT);
+	pinMode(wheelRightHallSensorPin, INPUT);
+
+}
+void loop() {
+	UptimeMillis = millis();
+	//motorBatteryAnalogVoltageDividerRead();
+	//wheelHallSensorsRead();
+
+	RCReadControls();
+
+	if (RCsignal()){
+		//lcd.setBacklight(1);
+		RCActivateState();
+	}
+	if (! RCsignal()){
+		actionStationary();
+		automationStateSet(stateNoRCSignal);
+	}
+
+	automationStateSerialPrint(displayVerbose);
 }
 
-void loop()
+void motorBatteryAnalogVoltageDividerRead()
 {
-	// here is where you'd put code that needs to be running all the time.
-
-	// check to see if it's time to blink the LED; that is, if the 
-	// difference between the current time and last time you blinked 
-	// the LED is bigger than the interval at which you want to 
-	// blink the LED.
-	currentMillis = millis();
-	eyesOpen();
-	blinkEyeRight();
-	blinkEyeLeft();
+	float sensorValue;
+	sensorValue = analogRead(AnalogVoltageDividerPin);
+	motorBatteryVoltageNow = (sensorValue / 4.092) * .1;
+	motorBatteryVoltageHigh = max(motorBatteryVoltageNow, motorBatteryVoltageHigh);
+	motorBatteryVoltageLow = min(motorBatteryVoltageNow, motorBatteryVoltageLow);
 }
-void testLeftEyeLedPostions()
+void wheelHallSensorsRead()
 {
-	digitalWrite(ledPinLeft0, ledStateInverse);
-	digitalWrite(ledPinLeft1, ledStateInverse);
-	digitalWrite(ledPinLeft2, ledStateInverse);
-	digitalWrite(ledPinLeft3, ledStateInverse);
-	digitalWrite(ledPinLeft4, ledStateInverse);
-	digitalWrite(ledPinLeft5, ledStateInverse);
-	digitalWrite(ledPinLeft6, ledStateInverse);
-	digitalWrite(ledPinLeft7, ledStateInverse);
-	digitalWrite(ledPinLeft8, ledStateInverse);
-	digitalWrite(ledPinLeft9, ledStateInverse);
-	digitalWrite(ledPinLeft10, ledStateInverse);
-	digitalWrite(ledPinLeft11, ledStateInverse);
-	digitalWrite(ledPinLeft12, ledStateInverse);
+	wheelHallSensorLeft = digitalRead(wheelLefttHallSensorPin);
+	wheelHallSensorRight = digitalRead(wheelRightHallSensorPin);
 }
-void testRighEyeLedPositions()
-{
-	digitalWrite(ledPinRight0, HIGH);
-	digitalWrite(ledPinRight1, HIGH);
-	digitalWrite(ledPinRight2, HIGH);
-	digitalWrite(ledPinRight3, HIGH);
-	digitalWrite(ledPinRight4, HIGH);
-	digitalWrite(ledPinRight5, HIGH);
-	digitalWrite(ledPinRight6, HIGH);
-	digitalWrite(ledPinRight7, HIGH);
-	digitalWrite(ledPinRight8, HIGH);
-	digitalWrite(ledPinRight9, HIGH);
-	digitalWrite(ledPinRight10, HIGH);
-	digitalWrite(ledPinRight11, HIGH);
-	digitalWrite(ledPinRight12, HIGH);
+
+void automationStateSet(int stateType){
+	automationState = stateType;
 }
-void flashingEyes()
-{
-
-	if(currentMillis - previousMillis > interval) {
-		// save the last time you blinked the LED 
-		previousMillis = currentMillis;   
-
-		// if the LED is off turn it on and vice-versa:
-		if (ledState == LOW)
-		{
-			ledState = HIGH;
-			ledStateInverse = LOW;
+void automationStateSerialPrint(int displayType){
+	if(UptimeMillis - serialPrintLastUpdateMilli > serialPrintRefreshRateMilli) {
+		serialPrintLastUpdateMilli = UptimeMillis; 
+		if (displayType == displayVerbose) {
+			Serial.println(automationStateVerboseFormat());
+			//LCDdisplay(automationStateVerboseFormat());
 		}
-		else
+	}
+}
+String automationStateVerboseFormat(){
+	switch (automationState){
+	case stateUndefined:
+		return("Undefined");
+	case stateNoRCSignal:
+		return("No RC Signal");
+	case stateStationary:
+		return("Stationary");
+	case stateMoveForward:
+		return("Forward");
+	case stateMoveForwardSteerLeft:
+		return("Forward Left");
+	case stateMoveForwardSteerRight:
+		return("Forward Right");
+	case stateMoveBackward:
+		return("Reverse");
+	case stateMoveBackwardSteerLeft:
+		return("Reverse Left");
+	case stateMoveBackwardSteerRight:
+		return("Reverse Right");
+	case stateMoveRotateLeft:
+		return("Rotate Left");
+	case stateMoveRotateRight:
+		return("Rotate Right");
+	}
+}
+
+void LCDdisplay(String state){
+	//lcd.clear();
+
+	if (automationState == stateMoveForward || automationState == stateMoveForwardSteerLeft || automationState == stateMoveForwardSteerRight){
+		//lcd.setCursor(0,0);
+		//lcd.print("MotorPWM ");
+		//lcd.print(motorLeftCurentPWM);
+		//lcd.print("/");
+		//lcd.print(motorRightCurentPWM);
+
+		//lcd.setCursor(0,1);
+		//lcd.print("Vlt ");
+		//lcd.print((int)motorBatteryVoltageHigh);
+		//lcd.print("/");
+		//lcd.print(motorBatteryVoltageNow);
+		//lcd.print("/");
+		//lcd.print((int)motorBatteryVoltageLow);
+	}
+	else
+	{
+		//switch (LCDPageNumber){
+		//case 1:
+		//	lcd.setCursor(0, 0);
+		//	lcd.print(state);
+		//	break;
+
+		//case 2:
+		//	lcd.setCursor(0,0);
+		//	lcd.print("MotorPWM ");
+		//	lcd.print(motorLeftCurentPWM);
+		//	lcd.print("/");
+		//	lcd.print(motorRightCurentPWM);
+
+		//	lcd.setCursor(0,1);
+		//	lcd.print("Vlt ");
+		//	lcd.print((int)motorBatteryVoltageHigh);
+		//	lcd.print("/");
+		//	lcd.print(motorBatteryVoltageNow);
+		//	lcd.print("/");
+		//	lcd.print((int)motorBatteryVoltageLow);
+		//	break;
+
+		//case 3:
+		//	lcd.setCursor(0,0);
+		//	lcd.print("L/R Hall ");
+		//	lcd.print(wheelHallSensorLeft);
+		//	lcd.print("/");
+		//	lcd.print(wheelHallSensorRight);
+		//	break;
+
+		//case 4:	
+		//	lcd.setCursor(0,0);
+		//	lcd.print("RC PMM Y/X ");
+		//	lcd.setCursor(0,1);
+		//	lcd.print(RCcontrolYPWM);
+		//	lcd.print("/");
+		//	lcd.print(RCcontrolXPWM);
+		//	break;
+
+		//default: //Last page
+		//	lcd.setCursor(0,0);
+		//	lcd.print("Y ");
+		//	lcd.print(RCcontrolYPWMTop);
+		//	lcd.print("/");
+		//	lcd.print(RCcontrolYPWM);
+		//	lcd.print("/");
+		//	lcd.print(RCcontrolYPWMBottom);
+
+		//	lcd.setCursor(0,1);
+		//	lcd.print("X ");
+		//	lcd.print(RCcontrolXPWMTop);
+		//	lcd.print("/");
+		//	lcd.print(RCcontrolXPWM);
+		//	lcd.print("/");
+		//	lcd.print(RCcontrolXPWMBottom);
+
+		//	LCDPageNumber = 0; 
+		//	break;
+		//}
+		//LCDPageNumber++;
+	}
+}
+
+boolean RCsignal()
+{
+	return RCcontrolYPWM > 0 && RCcontrolXPWM > 0;
+}
+void RCReadControls()
+{
+	RCcontrolXPWM = pulseIn(RCcontrolX, HIGH, 25000);
+	if (RCcontrolXPWM != 0){
+		RCcontrolXAutoAdjustLimits(RCcontrolXPWM);
+		RCcontrolXPWM = RCcontrolXPWM == 0 ? RCcontrolXPWMMiddle : RCcontrolXPWM;
+		RCcontrolXPWM = constrain(RCcontrolXPWM, RCcontrolXPWMBottom, RCcontrolXPWMTop);
+	}
+
+	RCcontrolYPWM = pulseIn(RCcontrolY, HIGH, 25000);
+	if (RCcontrolYPWM != 0){
+		RCcontrolYAutoAdjustLimits(RCcontrolYPWM);
+		RCcontrolYPWM = RCcontrolYPWM == 0 ? RCcontrolYPWMMiddle : RCcontrolYPWM;
+		RCcontrolYPWM = constrain(RCcontrolYPWM, RCcontrolYPWMBottom, RCcontrolYPWMTop);
+	}
+}
+void RCcontrolXAutoAdjustLimits(int RCcontrolX){
+	RCcontrolXPWMTopDynamic = max(RCcontrolXPWM, RCcontrolXPWMTopDynamic);
+	RCcontrolXPWMBottomDynamic = min(RCcontrolXPWM, RCcontrolXPWMBottomDynamic);
+
+	if (RCcontrolXPWMTop < RCcontrolXPWMTopDynamic){
+	}
+	if (RCcontrolXPWMBottom > RCcontrolXPWMBottomDynamic){
+	}
+
+	RCcontrolXPWMRangeSpread = RCcontrolXPWMTop - RCcontrolXPWMBottom;
+	RCcontrolXPWMMiddleDynamic = (int)(RCcontrolXPWMRangeSpread * .5) + RCcontrolXPWMBottom;
+}
+void RCcontrolYAutoAdjustLimits(int RCcontrolY){
+	RCcontrolYPWMTopDynamic = max(RCcontrolYPWM, RCcontrolYPWMTopDynamic);
+	RCcontrolYPWMBottomDynamic = min(RCcontrolYPWM, RCcontrolYPWMBottomDynamic);
+
+	if (RCcontrolYPWMTop < RCcontrolYPWMTopDynamic){
+	}
+	if (RCcontrolYPWMBottom > RCcontrolYPWMBottomDynamic){
+	}
+
+	RCcontrolYPWMRangeSpread = RCcontrolYPWMTop - RCcontrolYPWMBottom;
+	RCcontrolYPWMMiddleDynamic = (int)(RCcontrolYPWMRangeSpread * .5) + RCcontrolYPWMBottom;
+}
+void RCActivateState(){
+	if(RCcontrolIsMoveForwardRequested()) {
+		actionMoveForward();
+	}
+	else if(RCControlIsMoveBackwardRequested()) {
+		actionMoveBackward();
+	} 
+	else if(RCcontrolIsMoveLeftRequested()){
+
+		actionMoveRotateLeft();
+	}
+	else if(RCcontrolIsMoveRightRequested()){
+		actionMoveRotateRight();
+	}
+	else{
+		actionStationary();
+	}
+}
+
+boolean RCcontrolIsMoveForwardRequested()
+{
+	return RCcontrolYPWM < (RCcontrolYPWMMiddle - RCcontrolPWMYBuffer);
+}
+boolean RCControlIsMoveBackwardRequested()
+{
+	return RCcontrolYPWM > (RCcontrolYPWMMiddle + RCcontrolPWMYBuffer); 
+}
+boolean RCcontrolIsMoveLeftRequested(){
+	return RCcontrolXPWM < (RCcontrolXPWMMiddle - RCcontrolPWMXBuffer);  
+}
+boolean RCcontrolIsMoveRightRequested(){
+	return RCcontrolXPWM > (RCcontrolXPWMMiddle + RCcontrolPWMXBuffer);
+}
+
+void actionMoveForward()
+{
+	automationStateSet(stateMoveForward);
+	/*Why negative numbers? need abs()*/
+	int motorLeftRightSpeed = abs(map(RCcontrolYPWM, RCcontrolYPWMMiddle, RCcontrolYPWMTop, 0, (255 + motorForwardPWMcompensation)));
+	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
+	actionMoveSteer(motorLeftRightSpeed, stateMoveForward);
+
+	digitalWrite(motorLeftForward, LOW);
+	digitalWrite(motorLeftBackward, HIGH);
+	digitalWrite(motorRightForward, LOW);
+	digitalWrite(motorRightBackward, HIGH);
+
+	analogWrite(motorLeftPWM, motorLeftCurentPWM);
+	analogWrite(motorRightPWM, motorRightCurentPWM);
+}
+void actionMoveBackward()
+{
+	automationStateSet(stateMoveBackward);
+	/*Why negative numbers? need abs()*/
+	int motorLeftRightSpeed = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, (255 + motorForwardPWMcompensation)));
+	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
+	actionMoveSteer(motorLeftRightSpeed, stateMoveForward);
+
+	digitalWrite(motorLeftForward, HIGH);
+	digitalWrite(motorLeftBackward, LOW);
+	digitalWrite(motorRightForward, HIGH);
+	digitalWrite(motorRightBackward, LOW);
+
+	analogWrite(motorLeftPWM, motorLeftCurentPWM);
+	analogWrite(motorRightPWM, motorRightCurentPWM);
+}
+void actionMoveRotateLeft(){
+	automationStateSet(stateMoveRotateLeft);
+	/*Why negative numbers? need abs()*/
+	int motorLeftRightSpeed = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, (255 + motorBackwardPWMcompensation)));
+	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
+
+	int mtrTurnPWM = 0;
+	mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
+	motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
+	motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
+
+	//Original GNH 04/28/2013
+	digitalWrite(motorLeftForward, HIGH);
+	digitalWrite(motorLeftBackward, LOW);
+	digitalWrite(motorRightForward, LOW);
+	digitalWrite(motorRightBackward, HIGH);
+
+	analogWrite(motorLeftPWM, motorLeftCurentPWM);
+	analogWrite(motorRightPWM, motorRightCurentPWM);
+	//lcd.print("actionMoveRotateLeft");
+}
+void actionMoveRotateRight(){
+	automationStateSet(stateMoveRotateRight);
+	/*Why negative numbers? need abs()*/
+	int motorLeftRightSpeed = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, (255 + motorForwardPWMcompensation)));
+	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
+
+	int mtrTurnPWM = 0;
+	mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
+	motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
+	motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
+
+	digitalWrite(motorLeftForward, HIGH);
+	digitalWrite(motorLeftBackward, LOW);
+	digitalWrite(motorRightForward, HIGH);
+	digitalWrite(motorRightBackward, LOW);
+
+	analogWrite(motorLeftPWM, motorLeftCurentPWM);
+	analogWrite(motorRightPWM, motorRightCurentPWM);
+}
+void actionMoveSteer(int motorPWM, int state)
+{
+	/* TODO: Set Automation State */
+	motorLeftCurentPWM = motorPWM;
+	motorRightCurentPWM = motorPWM;
+	int mtrTurnPWM = 0;
+
+	if (state == stateMoveForward)
+	{
+		if (RCcontrolIsMoveLeftRequested())
 		{
-			ledState = LOW;
-			ledStateInverse = HIGH;
+			automationStateSet(stateMoveForwardSteerLeft);
+			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
+			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
+			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
 		}
-		// set the LED with the ledState of the variable:
-		digitalWrite(ledPinRight0, ledState);
-		digitalWrite(ledPinRight1, ledState);
-		digitalWrite(ledPinRight2, ledState);
-		digitalWrite(ledPinRight3, ledState);
-		digitalWrite(ledPinRight4, ledState);
-		digitalWrite(ledPinRight5, ledState);
-		digitalWrite(ledPinRight6, ledState);
-		digitalWrite(ledPinRight7, ledState);
-		digitalWrite(ledPinRight8, ledState);
-		digitalWrite(ledPinRight9, ledState);
-		digitalWrite(ledPinRight10, ledState);
-		digitalWrite(ledPinRight11, ledState);
-		digitalWrite(ledPinRight12, ledState);
-
-		digitalWrite(ledPinLeft0, ledStateInverse);
-		digitalWrite(ledPinLeft1, ledStateInverse);
-		digitalWrite(ledPinLeft2, ledStateInverse);
-		digitalWrite(ledPinLeft3, ledStateInverse);
-		digitalWrite(ledPinLeft4, ledStateInverse);
-		digitalWrite(ledPinLeft5, ledStateInverse);
-		digitalWrite(ledPinLeft6, ledStateInverse);
-		digitalWrite(ledPinLeft7, ledStateInverse);
-		digitalWrite(ledPinLeft8, ledStateInverse);
-		digitalWrite(ledPinLeft9, ledStateInverse);
-		digitalWrite(ledPinLeft10, ledStateInverse);
-		digitalWrite(ledPinLeft11, ledStateInverse);
-		digitalWrite(ledPinLeft12, ledStateInverse);
-
+		else if (RCcontrolIsMoveRightRequested())
+		{
+			automationStateSet(stateMoveForwardSteerRight);
+			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
+			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
+			motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
+		}
+	}
+	else if (state = stateMoveBackward)
+	{
+		if (RCcontrolIsMoveLeftRequested())
+		{
+			automationStateSet(stateMoveBackwardSteerLeft);
+			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
+			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
+			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
+		}
+		else if (RCcontrolIsMoveRightRequested())
+		{
+			automationStateSet(stateMoveBackwardSteerRight);
+			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
+			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
+			motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
+		}
 	}
 }
-void blinkEyeRight(){
-	if(currentMillis - previousMillisRight > blinkInterval) {
-		// save the last time you blinked the LED 
-		previousMillisRight = currentMillis;   
-		digitalWrite(ledPinRight0, LOW);
-		digitalWrite(ledPinRight1, LOW);
-		delay(30);
-		digitalWrite(ledPinRight12, LOW);
-		delay(30);
-		digitalWrite(ledPinRight2, LOW);
-		digitalWrite(ledPinRight11, LOW);
-		delay(30);
-		digitalWrite(ledPinRight3, LOW);
-		digitalWrite(ledPinRight10, LOW);
-		delay(30);
-		digitalWrite(ledPinRight4, LOW);
-		digitalWrite(ledPinRight9, LOW);
-		delay(20);
-		digitalWrite(ledPinRight5, LOW);
-		digitalWrite(ledPinRight8, LOW);
-		delay(20);
-		digitalWrite(ledPinRight6, LOW);
-		digitalWrite(ledPinRight7, LOW);
-		//Lid Up
-		digitalWrite(ledPinRight5, LOW);
-		digitalWrite(ledPinRight8, LOW);
-		delay(20);
-		digitalWrite(ledPinRight4, LOW);
-		digitalWrite(ledPinRight9, LOW);
-		delay(20);
-		digitalWrite(ledPinRight3, LOW);
-		digitalWrite(ledPinRight10, LOW);
-		delay(20);
-		digitalWrite(ledPinRight2, LOW);
-		digitalWrite(ledPinRight11, LOW);
-		delay(20);
-		digitalWrite(ledPinRight12, LOW);
-		delay(20);
-		digitalWrite(ledPinRight0, LOW);
-		digitalWrite(ledPinRight1, LOW);
-
-	}
-}
-void blinkEyeLeft(){
-	if(currentMillis - previousMillisLeft > blinkInterval) {
-		// save the last time you blinked the LED 
-		previousMillisLeft = currentMillis;   
-		digitalWrite(ledPinLeft0, LOW);
-		digitalWrite(ledPinLeft1, LOW);
-		delay(30);
-		digitalWrite(ledPinLeft12, LOW);
-		delay(30);
-		digitalWrite(ledPinLeft2, LOW);
-		digitalWrite(ledPinLeft11, LOW);
-		delay(30);
-		digitalWrite(ledPinLeft3, LOW);
-		digitalWrite(ledPinLeft10, LOW);
-		delay(30);
-		digitalWrite(ledPinLeft4, LOW);
-		digitalWrite(ledPinLeft9, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft5, LOW);
-		digitalWrite(ledPinLeft8, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft6, LOW);
-		digitalWrite(ledPinLeft7, LOW);
-		//Lid Up
-		digitalWrite(ledPinLeft5, LOW);
-		digitalWrite(ledPinLeft8, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft4, LOW);
-		digitalWrite(ledPinLeft9, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft3, LOW);
-		digitalWrite(ledPinLeft10, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft2, LOW);
-		digitalWrite(ledPinLeft11, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft12, LOW);
-		delay(20);
-		digitalWrite(ledPinLeft0, LOW);
-		digitalWrite(ledPinLeft1, LOW);
-	}
-}
-void eyesOpen()
+void actionStationary()
 {
-	digitalWrite(ledPinRight0, HIGH);
-	digitalWrite(ledPinRight1, HIGH);
-	digitalWrite(ledPinRight2, HIGH);
-	digitalWrite(ledPinRight3, HIGH);
-	digitalWrite(ledPinRight4, HIGH);
-	digitalWrite(ledPinRight5, HIGH);
-	digitalWrite(ledPinRight6, HIGH);
-	digitalWrite(ledPinRight7, HIGH);
-	digitalWrite(ledPinRight8, HIGH);
-	digitalWrite(ledPinRight9, HIGH);
-	digitalWrite(ledPinRight10, HIGH);
-	digitalWrite(ledPinRight11, HIGH);
-	digitalWrite(ledPinRight12, HIGH);
-
-	digitalWrite(ledPinLeft0, HIGH);
-	digitalWrite(ledPinLeft1, HIGH);
-	digitalWrite(ledPinLeft2, HIGH);
-	digitalWrite(ledPinLeft3, HIGH);
-	digitalWrite(ledPinLeft4, HIGH);
-	digitalWrite(ledPinLeft5, HIGH);
-	digitalWrite(ledPinLeft6, HIGH);
-	digitalWrite(ledPinLeft7, HIGH);
-	digitalWrite(ledPinLeft8, HIGH);
-	digitalWrite(ledPinLeft9, HIGH);
-	digitalWrite(ledPinLeft10, HIGH);
-	digitalWrite(ledPinLeft11, HIGH);
-	digitalWrite(ledPinLeft12, HIGH);
-}
-void eyesClose()
-{
-	digitalWrite(ledPinRight0, LOW);
-	digitalWrite(ledPinRight1, LOW);
-	digitalWrite(ledPinRight2, LOW);
-	digitalWrite(ledPinRight3, LOW);
-	digitalWrite(ledPinRight4, LOW);
-	digitalWrite(ledPinRight5, LOW);
-	digitalWrite(ledPinRight6, LOW);
-	digitalWrite(ledPinRight7, LOW);
-	digitalWrite(ledPinRight8, LOW);
-	digitalWrite(ledPinRight9, LOW);
-	digitalWrite(ledPinRight10, LOW);
-	digitalWrite(ledPinRight11, LOW);
-	digitalWrite(ledPinRight12, LOW);
-
-	digitalWrite(ledPinLeft0, LOW);
-	digitalWrite(ledPinLeft1, LOW);
-	digitalWrite(ledPinLeft2, LOW);
-	digitalWrite(ledPinLeft3, LOW);
-	digitalWrite(ledPinLeft4, LOW);
-	digitalWrite(ledPinLeft5, LOW);
-	digitalWrite(ledPinLeft6, LOW);
-	digitalWrite(ledPinLeft7, LOW);
-	digitalWrite(ledPinLeft8, LOW);
-	digitalWrite(ledPinLeft9, LOW);
-	digitalWrite(ledPinLeft10, LOW);
-	digitalWrite(ledPinLeft11, LOW);
-	digitalWrite(ledPinLeft12, LOW);
+	automationStateSet(stateStationary);
+	motorLeftCurentPWM = 0;
+	motorRightCurentPWM = 0;
+	digitalWrite(motorLeftBackward, LOW);
+	digitalWrite(motorLeftForward, LOW);
+	digitalWrite(motorRightForward, LOW);
+	digitalWrite(motorRightBackward, LOW);
 }

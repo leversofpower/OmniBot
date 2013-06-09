@@ -28,13 +28,27 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
-void testLeftEyeLedPostions();
-void testRighEyeLedPositions();
-void flashingEyes();
-void blinkEyeRight();
-void blinkEyeLeft();
-void eyesOpen();
-void eyesClose();
+void motorBatteryAnalogVoltageDividerRead();
+void wheelHallSensorsRead();
+void automationStateSet(int stateType);
+void automationStateSerialPrint(int displayType);
+String automationStateVerboseFormat();
+void LCDdisplay(String state);
+boolean RCsignal();
+void RCReadControls();
+void RCcontrolXAutoAdjustLimits(int RCcontrolX);
+void RCcontrolYAutoAdjustLimits(int RCcontrolY);
+void RCActivateState();
+boolean RCcontrolIsMoveForwardRequested();
+boolean RCControlIsMoveBackwardRequested();
+boolean RCcontrolIsMoveLeftRequested();
+boolean RCcontrolIsMoveRightRequested();
+void actionMoveForward();
+void actionMoveBackward();
+void actionMoveRotateLeft();
+void actionMoveRotateRight();
+void actionMoveSteer(int motorPWM, int state);
+void actionStationary();
 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
