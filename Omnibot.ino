@@ -10,14 +10,10 @@ low 1056 - 1062 direction left / Varience 6
 Average Varience 7.6
 
 TODO:
-Rotation
-motors are all moving forward one should be moving backward and the other forward
+Adjust PWM values for more finite control
 
 State Based LCD Display:
 when moving just display MOTOR PWM
-
-Right turn seems to be much weaker then left turn?
-
 Create LCD Message que
 */
 
@@ -33,11 +29,11 @@ const int RCcontrolX = 8;
 
 const int motorLeftForward = 3;
 const int motorLeftBackward = 4;
-const int motorLeftPWM = 5; //2
+const int motorLeftPWM = 5; //I think this is wired backwards...
 
 const int motorRightForward = 7;
 const int motorRightBackward = 6; 
-const int motorRightPWM = 2; //5
+const int motorRightPWM = 2; //I think this is wired backwards...
 
 const int AnalogVoltageDividerPin = 0;
 const int wheelLefttHallSensorPin = 7;
@@ -53,26 +49,31 @@ int RCcontrolYPWM = 0;
 int RCcontrolYPWMTop = 1985;
 int RCcontrolYPWMMiddle = 1540;
 int RCcontrolYPWMBottom = 1061;
+
+//Not fully implemented yet
 int RCcontrolYPWMRangeSpread = 0;
 int RCcontrolYPWMTopDynamic = RCcontrolYPWMBottom;
 int RCcontrolYPWMMiddleDynamic = 0;
 int RCcontrolYPWMBottomDynamic = RCcontrolYPWMTop;
+
 int RCcontrolXPWM = 0;
 int RCcontrolXPWMTop = 1972;
 int RCcontrolXPWMMiddle = 1510;
 int RCcontrolXPWMBottom = 1059; 
+
+//Not fully implemented yet
 int RCcontrolXPWMRangeSpread = 0;
 int RCcontrolXPWMTopDynamic = RCcontrolXPWMBottom;
 int RCcontrolXPWMMiddleDynamic = 0;
 int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
+
 int RCcontrolPWMYBuffer = 20;
 int RCcontrolPWMXBuffer = 20;
 
 int motorLeftCurentPWM = 0;
 int motorRightCurentPWM = 0;
-int motorForwardPWMcompensation = 10;
-int motorBackwardPWMcompensation = 18;
-int motorMinimumPWMforActuation = 200;
+int motorMinimumPWMforActuation = 95;
+
 float motorBatteryVoltageNow = 0.0;
 float motorBatteryVoltageHigh = 0.0;
 float motorBatteryVoltageLow = 12.0;
@@ -327,11 +328,11 @@ void RCActivateState(){
 	else if(RCControlIsMoveBackwardRequested()) {
 		actionMoveBackward();
 	} 
-	else if(RCcontrolIsMoveLeftRequested()){
+	else if(RCcontrolIsMoveRotateLeftRequested()){
 
 		actionMoveRotateLeft();
 	}
-	else if(RCcontrolIsMoveRightRequested()){
+	else if(RCcontrolIsMoveRotateRightRequested()){
 		actionMoveRotateRight();
 	}
 	else{
@@ -339,6 +340,7 @@ void RCActivateState(){
 	}
 }
 
+// 
 boolean RCcontrolIsMoveForwardRequested()
 {
 	return RCcontrolYPWM < (RCcontrolYPWMMiddle - RCcontrolPWMYBuffer);
@@ -347,20 +349,21 @@ boolean RCControlIsMoveBackwardRequested()
 {
 	return RCcontrolYPWM > (RCcontrolYPWMMiddle + RCcontrolPWMYBuffer); 
 }
-boolean RCcontrolIsMoveLeftRequested(){
+boolean RCcontrolIsMoveRotateLeftRequested(){
 	return RCcontrolXPWM < (RCcontrolXPWMMiddle - RCcontrolPWMXBuffer);  
 }
-boolean RCcontrolIsMoveRightRequested(){
+boolean RCcontrolIsMoveRotateRightRequested(){
 	return RCcontrolXPWM > (RCcontrolXPWMMiddle + RCcontrolPWMXBuffer);
 }
 
+// Movement PWM Settings and Actuation 
 void actionMoveForward()
 {
 	automationStateSet(stateMoveForward);
 	/*Why negative numbers? need abs()*/
-	int motorLeftRightSpeed = abs(map(RCcontrolYPWM, RCcontrolYPWMMiddle, RCcontrolYPWMTop, 0, (255 + motorForwardPWMcompensation)));
-	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
-	actionMoveSteer(motorLeftRightSpeed, stateMoveForward);
+	int motorPWM = abs(map(RCcontrolYPWM, RCcontrolYPWMMiddle, RCcontrolYPWMTop, 0, 255));
+	motorPWM = constrain(motorPWM, motorMinimumPWMforActuation, 255);
+	actionMoveSteer(motorPWM, stateMoveForward);
 
 	digitalWrite(motorLeftForward, LOW);
 	digitalWrite(motorLeftBackward, HIGH);
@@ -374,9 +377,9 @@ void actionMoveBackward()
 {
 	automationStateSet(stateMoveBackward);
 	/*Why negative numbers? need abs()*/
-	int motorLeftRightSpeed = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, (255 + motorForwardPWMcompensation)));
-	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
-	actionMoveSteer(motorLeftRightSpeed, stateMoveForward);
+	int motorPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255));
+	motorPWM = constrain(motorPWM, motorMinimumPWMforActuation, 255);
+	actionMoveSteer(motorPWM, stateMoveForward);
 
 	digitalWrite(motorLeftForward, HIGH);
 	digitalWrite(motorLeftBackward, LOW);
@@ -388,61 +391,44 @@ void actionMoveBackward()
 }
 void actionMoveRotateLeft(){
 	automationStateSet(stateMoveRotateLeft);
-	/*Why negative numbers? need abs()*/
-	int motorLeftRightSpeed = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, (255 + motorBackwardPWMcompensation)));
-	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
+	int mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
 
-	int mtrTurnPWM = 0;
-	mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
-	motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
-	motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
-
-	//Original GNH 04/28/2013
 	digitalWrite(motorLeftForward, HIGH);
 	digitalWrite(motorLeftBackward, LOW);
 	digitalWrite(motorRightForward, LOW);
 	digitalWrite(motorRightBackward, HIGH);
 
-	analogWrite(motorLeftPWM, motorLeftCurentPWM);
-	analogWrite(motorRightPWM, motorRightCurentPWM);
-	//lcd.print("actionMoveRotateLeft");
+	analogWrite(motorLeftPWM, mtrTurnPWM);
+	analogWrite(motorRightPWM, mtrTurnPWM);
 }
 void actionMoveRotateRight(){
 	automationStateSet(stateMoveRotateRight);
-	/*Why negative numbers? need abs()*/
-	int motorLeftRightSpeed = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, (255 + motorForwardPWMcompensation)));
-	motorLeftRightSpeed = constrain(motorLeftRightSpeed, motorMinimumPWMforActuation, 255);
+	int mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
 
-	int mtrTurnPWM = 0;
-	mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
-	motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
-	motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
-
-	digitalWrite(motorLeftForward, HIGH);
-	digitalWrite(motorLeftBackward, LOW);
+	digitalWrite(motorLeftForward, LOW);
+	digitalWrite(motorLeftBackward, HIGH);
 	digitalWrite(motorRightForward, HIGH);
 	digitalWrite(motorRightBackward, LOW);
 
-	analogWrite(motorLeftPWM, motorLeftCurentPWM);
-	analogWrite(motorRightPWM, motorRightCurentPWM);
+	analogWrite(motorLeftPWM, mtrTurnPWM);
+	analogWrite(motorRightPWM, mtrTurnPWM);
 }
 void actionMoveSteer(int motorPWM, int state)
 {
-	/* TODO: Set Automation State */
 	motorLeftCurentPWM = motorPWM;
 	motorRightCurentPWM = motorPWM;
 	int mtrTurnPWM = 0;
 
 	if (state == stateMoveForward)
 	{
-		if (RCcontrolIsMoveLeftRequested())
+		if (RCcontrolIsMoveRotateLeftRequested())
 		{
 			automationStateSet(stateMoveForwardSteerLeft);
 			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
 			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
 			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
 		}
-		else if (RCcontrolIsMoveRightRequested())
+		else if (RCcontrolIsMoveRotateRightRequested())
 		{
 			automationStateSet(stateMoveForwardSteerRight);
 			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
@@ -452,14 +438,14 @@ void actionMoveSteer(int motorPWM, int state)
 	}
 	else if (state = stateMoveBackward)
 	{
-		if (RCcontrolIsMoveLeftRequested())
+		if (RCcontrolIsMoveRotateLeftRequested())
 		{
 			automationStateSet(stateMoveBackwardSteerLeft);
 			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
 			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
 			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
 		}
-		else if (RCcontrolIsMoveRightRequested())
+		else if (RCcontrolIsMoveRotateRightRequested())
 		{
 			automationStateSet(stateMoveBackwardSteerRight);
 			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
