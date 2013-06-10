@@ -44,7 +44,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino;C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino;C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega;C:\Program Files\arduino-1.0.4\libraries\TimerMaster;C:\Program Files\arduino-1.0.4\libraries\TimerMaster\utility;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\Users\gharris\Documents\GitHub\OmniBot\Visual Micro\.OmniBot.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__AVR_ATmega2560__;ARDUINO=104;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -73,7 +73,15 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Omnibot\Timer-master\Timer.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="Visual Micro\.Omnibot.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Omnibot.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\Omnibot\Timer-master\Timer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

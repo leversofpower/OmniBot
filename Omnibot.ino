@@ -17,8 +17,12 @@ when moving just display MOTOR PWM
 Create LCD Message que
 */
 
+#include <Timer.h>
+#include <Event.h>
+
 //#include <Wire.h>
 //#include <LiquidCrystal_I2C.h>
+
 /*LCD Display */
 //LiquidCrystal_I2C lcd(0x27,16,2); // set the LCD address to 0x27
 int LCDPageNumber = 0;
@@ -39,16 +43,50 @@ const int AnalogVoltageDividerPin = 0;
 const int wheelLefttHallSensorPin = 7;
 const int wheelRightHallSensorPin = 6;
 
+//Eyes - Order these correctly
+const int ledPinEyeRight7 = 26;
+const int ledPinEyeRight4 = 27;
+const int ledPinEyeRight6 = 28;
+const int ledPinEyeRight3 = 29;
+const int ledPinEyeRight5 = 30;
+const int ledPinEyeRight2 = 31;
+const int ledPinEyeRight0 = 32;
+const int ledPinEyeRight10 = 33; 
+const int ledPinEyeRight12 = 34;
+const int ledPinEyeRight9 = 35;
+const int ledPinEyeRight11 = 36;
+const int ledPinEyeRight8 = 37;
+const int ledPinEyeRight1 = 38; 
+
+const int ledPinEyeLeft0 = 40;
+const int ledPinEyeLeft10 = 41;
+const int ledPinEyeLeft12 = 42;
+const int ledPinEyeLeft9 = 43;
+const int ledPinEyeLeft11 = 44; 
+const int ledPinEyeLeft8 = 45; 
+const int ledPinEyeLeft7 = 46; 
+const int ledPinEyeLeft4 = 47; 
+const int ledPinEyeLeft6 = 48; 
+const int ledPinEyeLeft3 = 49; 
+const int ledPinEyeLeft5 = 50; 
+const int ledPinEyeLeft2 = 51; 
+const int ledPinEyeLeft1 = 52;
+
 unsigned long UptimeMillis;
+
+//Timers 
+Timer t;
 
 /* Serial Display */
 const int serialPrintRefreshRateMilli = 1000;
 unsigned long serialPrintLastUpdateMilli = 0;
 
 int RCcontrolYPWM = 0;
-int RCcontrolYPWMTop = 1985;
+int RCcontrolYPWMTop = 1973;
 int RCcontrolYPWMMiddle = 1540;
 int RCcontrolYPWMBottom = 1061;
+int RCcontrolPWMYBuffer = 50;
+int RCcontrolPWMXBuffer = 50;
 
 //Not fully implemented yet
 int RCcontrolYPWMRangeSpread = 0;
@@ -66,9 +104,6 @@ int RCcontrolXPWMRangeSpread = 0;
 int RCcontrolXPWMTopDynamic = RCcontrolXPWMBottom;
 int RCcontrolXPWMMiddleDynamic = 0;
 int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
-
-int RCcontrolPWMYBuffer = 20;
-int RCcontrolPWMXBuffer = 20;
 
 int motorLeftCurentPWM = 0;
 int motorRightCurentPWM = 0;
@@ -121,9 +156,42 @@ void setup() {
 	pinMode(wheelLefttHallSensorPin, INPUT);
 	pinMode(wheelRightHallSensorPin, INPUT);
 
+	pinMode(ledPinEyeRight0, OUTPUT); 
+	pinMode(ledPinEyeRight1, OUTPUT); 
+	pinMode(ledPinEyeRight2, OUTPUT); 
+	pinMode(ledPinEyeRight3, OUTPUT); 
+	pinMode(ledPinEyeRight4, OUTPUT); 
+	pinMode(ledPinEyeRight5, OUTPUT); 
+	pinMode(ledPinEyeRight6, OUTPUT); 
+	pinMode(ledPinEyeRight7, OUTPUT); 
+	pinMode(ledPinEyeRight8, OUTPUT); 
+	pinMode(ledPinEyeRight9, OUTPUT); 
+	pinMode(ledPinEyeRight10, OUTPUT);  
+	pinMode(ledPinEyeRight11, OUTPUT); 
+	pinMode(ledPinEyeRight12, OUTPUT);
+
+	pinMode(ledPinEyeLeft0, OUTPUT); 
+	pinMode(ledPinEyeLeft1, OUTPUT); 
+	pinMode(ledPinEyeLeft2, OUTPUT); 
+	pinMode(ledPinEyeLeft3, OUTPUT); 
+	pinMode(ledPinEyeLeft4, OUTPUT); 
+	pinMode(ledPinEyeLeft5, OUTPUT); 
+	pinMode(ledPinEyeLeft6, OUTPUT); 
+	pinMode(ledPinEyeLeft7, OUTPUT); 
+	pinMode(ledPinEyeLeft8, OUTPUT); 
+	pinMode(ledPinEyeLeft9, OUTPUT); 
+	pinMode(ledPinEyeLeft10, OUTPUT); 
+	pinMode(ledPinEyeLeft11, OUTPUT); 
+	pinMode(ledPinEyeLeft12, OUTPUT);
+
+	eyesOpen();
+	int tickEvent = t.every(11000, eyesBlink);
 }
 void loop() {
 	UptimeMillis = millis();
+
+	t.update();
+
 	//motorBatteryAnalogVoltageDividerRead();
 	//wheelHallSensorsRead();
 
@@ -140,7 +208,134 @@ void loop() {
 
 	automationStateSerialPrint(displayVerbose);
 }
+void eyesBlink(){
+	digitalWrite(ledPinEyeLeft0, LOW);
+	digitalWrite(ledPinEyeLeft1, LOW);
+	digitalWrite(ledPinEyeRight0, LOW);
+	digitalWrite(ledPinEyeRight1, LOW);
+	delay(30);
+	digitalWrite(ledPinEyeRight12, LOW);
+	digitalWrite(ledPinEyeLeft12, LOW);
+	delay(30);
+	digitalWrite(ledPinEyeLeft2, LOW);
+	digitalWrite(ledPinEyeLeft11, LOW);
+	digitalWrite(ledPinEyeRight2, LOW);
+	digitalWrite(ledPinEyeRight11, LOW);
+	delay(30);
+	digitalWrite(ledPinEyeLeft3, LOW);
+	digitalWrite(ledPinEyeLeft10, LOW);
+	digitalWrite(ledPinEyeRight3, LOW);
+	digitalWrite(ledPinEyeRight10, LOW);
+	delay(30);
+	digitalWrite(ledPinEyeLeft4, LOW);
+	digitalWrite(ledPinEyeLeft9, LOW);
+	digitalWrite(ledPinEyeRight4, LOW);
+	digitalWrite(ledPinEyeRight9, LOW);
+	delay(20);
+	digitalWrite(ledPinEyeLeft5, LOW);
+	digitalWrite(ledPinEyeLeft8, LOW);
+	digitalWrite(ledPinEyeRight5, LOW);
+	digitalWrite(ledPinEyeRight8, LOW);
+	delay(20);
+	digitalWrite(ledPinEyeLeft6, LOW);
+	digitalWrite(ledPinEyeLeft7, LOW);
+	digitalWrite(ledPinEyeRight6, LOW);
+	digitalWrite(ledPinEyeRight7, LOW);
 
+	//Lid Up
+	delay(20);
+	digitalWrite(ledPinEyeLeft6, HIGH);
+	digitalWrite(ledPinEyeLeft7, HIGH);
+	digitalWrite(ledPinEyeRight6, HIGH);
+	digitalWrite(ledPinEyeRight7, HIGH);
+    delay(20);
+	digitalWrite(ledPinEyeLeft5, HIGH);
+	digitalWrite(ledPinEyeLeft8, HIGH);
+	digitalWrite(ledPinEyeRight5, HIGH);
+	digitalWrite(ledPinEyeRight8, HIGH);
+	delay(20);
+	digitalWrite(ledPinEyeLeft4, HIGH);
+	digitalWrite(ledPinEyeLeft9, HIGH);
+	digitalWrite(ledPinEyeRight4, HIGH);
+	digitalWrite(ledPinEyeRight9, HIGH);
+	delay(20);
+	digitalWrite(ledPinEyeLeft3, HIGH);
+	digitalWrite(ledPinEyeLeft10, HIGH);
+	digitalWrite(ledPinEyeRight3, HIGH);
+	digitalWrite(ledPinEyeRight10, HIGH);
+	delay(20);
+	digitalWrite(ledPinEyeLeft2, HIGH);
+	digitalWrite(ledPinEyeLeft11, HIGH);
+	digitalWrite(ledPinEyeRight2, HIGH);
+	digitalWrite(ledPinEyeRight11, HIGH);
+	delay(20);
+	digitalWrite(ledPinEyeLeft12, HIGH);
+	digitalWrite(ledPinEyeRight12, HIGH);
+	delay(20);
+	digitalWrite(ledPinEyeLeft0, HIGH);
+	digitalWrite(ledPinEyeLeft1, HIGH);
+	digitalWrite(ledPinEyeRight0, HIGH);
+	digitalWrite(ledPinEyeRight1, HIGH);
+}
+void eyesOpen()
+{
+	digitalWrite(ledPinEyeRight0, HIGH);
+	digitalWrite(ledPinEyeRight1, HIGH);
+	digitalWrite(ledPinEyeRight2, HIGH);
+	digitalWrite(ledPinEyeRight3, HIGH);
+	digitalWrite(ledPinEyeRight4, HIGH);
+	digitalWrite(ledPinEyeRight5, HIGH);
+	digitalWrite(ledPinEyeRight6, HIGH);
+	digitalWrite(ledPinEyeRight7, HIGH);
+	digitalWrite(ledPinEyeRight8, HIGH);
+	digitalWrite(ledPinEyeRight9, HIGH);
+	digitalWrite(ledPinEyeRight10, HIGH);
+	digitalWrite(ledPinEyeRight11, HIGH);
+	digitalWrite(ledPinEyeRight12, HIGH);
+
+	digitalWrite(ledPinEyeLeft0, HIGH);
+	digitalWrite(ledPinEyeLeft1, HIGH);
+	digitalWrite(ledPinEyeLeft2, HIGH);
+	digitalWrite(ledPinEyeLeft3, HIGH);
+	digitalWrite(ledPinEyeLeft4, HIGH);
+	digitalWrite(ledPinEyeLeft5, HIGH);
+	digitalWrite(ledPinEyeLeft6, HIGH);
+	digitalWrite(ledPinEyeLeft7, HIGH);
+	digitalWrite(ledPinEyeLeft8, HIGH);
+	digitalWrite(ledPinEyeLeft9, HIGH);
+	digitalWrite(ledPinEyeLeft10, HIGH);
+	digitalWrite(ledPinEyeLeft11, HIGH);
+	digitalWrite(ledPinEyeLeft12, HIGH);
+}
+void eyesClose(){
+	digitalWrite(ledPinEyeRight0, LOW);
+	digitalWrite(ledPinEyeRight1, LOW);
+	digitalWrite(ledPinEyeRight2, LOW);
+	digitalWrite(ledPinEyeRight3, LOW);
+	digitalWrite(ledPinEyeRight4, LOW);
+	digitalWrite(ledPinEyeRight5, LOW);
+	digitalWrite(ledPinEyeRight6, LOW);
+	digitalWrite(ledPinEyeRight7, LOW);
+	digitalWrite(ledPinEyeRight8, LOW);
+	digitalWrite(ledPinEyeRight9, LOW);
+	digitalWrite(ledPinEyeRight10, LOW);
+	digitalWrite(ledPinEyeRight11, LOW);
+	digitalWrite(ledPinEyeRight12, LOW);
+
+	digitalWrite(ledPinEyeLeft0, LOW);
+	digitalWrite(ledPinEyeLeft1, LOW);
+	digitalWrite(ledPinEyeLeft2, LOW);
+	digitalWrite(ledPinEyeLeft3, LOW);
+	digitalWrite(ledPinEyeLeft4, LOW);
+	digitalWrite(ledPinEyeLeft5, LOW);
+	digitalWrite(ledPinEyeLeft6, LOW);
+	digitalWrite(ledPinEyeLeft7, LOW);
+	digitalWrite(ledPinEyeLeft8, LOW);
+	digitalWrite(ledPinEyeLeft9, LOW);
+	digitalWrite(ledPinEyeLeft10, LOW);
+	digitalWrite(ledPinEyeLeft11, LOW);
+	digitalWrite(ledPinEyeLeft12, LOW);
+}
 void motorBatteryAnalogVoltageDividerRead()
 {
 	float sensorValue;
@@ -174,23 +369,23 @@ String automationStateVerboseFormat(){
 	case stateNoRCSignal:
 		return("No RC Signal");
 	case stateStationary:
-		return("Stationary");
+		return("Stationary X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveForward:
-		return("Forward");
+		return("Forward X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveForwardSteerLeft:
-		return("Forward Left");
+		return("Forward Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveForwardSteerRight:
-		return("Forward Right");
+		return("Forward Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveBackward:
-		return("Reverse");
+		return("Reverse X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveBackwardSteerLeft:
-		return("Reverse Left");
+		return("Reverse Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveBackwardSteerRight:
-		return("Reverse Right");
+		return("Reverse Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveRotateLeft:
-		return("Rotate Left");
+		return("Rotate Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	case stateMoveRotateRight:
-		return("Rotate Right");
+		return("Rotate Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
 	}
 }
 

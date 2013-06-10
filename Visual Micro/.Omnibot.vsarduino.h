@@ -28,6 +28,9 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void eyesBlink();
+void eyesOpen();
+void eyesClose();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
 void automationStateSet(int stateType);
@@ -53,4 +56,5 @@ void actionStationary();
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Omnibot.ino"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\resource.h"
 #endif
