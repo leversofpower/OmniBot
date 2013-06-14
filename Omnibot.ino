@@ -1,128 +1,105 @@
-/* Notes
-ch1
-rest 1524 - 1532 / Varience 8
-high 1876 -1985 direction down / Varience 9
-low 1053 - 1065 direction up / Varience 12 
-
-ch2 rest 1502 - 1509 / Varience 7
-high 1968 - 1972 direction right / Varience 4
-low 1056 - 1062 direction left / Varience 6
-Average Varience 7.6
-
+/*
 TODO:
-Adjust PWM values for more finite control
-
+Fix Right rotation PWM clipping on the extreme right PWM scale
+Break Blinking into two seperate timers. One for lid down and one for lid up.
+Create array for the states. Add time spent in state for each state. Add last activate time of day.
 State Based LCD Display:
-when moving just display MOTOR PWM
 Create LCD Message que
 */
 
+/* Includes */
 #include <Timer.h>
 #include <Event.h>
-
 //#include <Wire.h>
 //#include <LiquidCrystal_I2C.h>
-
-/*LCD Display */
-//LiquidCrystal_I2C lcd(0x27,16,2); // set the LCD address to 0x27
-int LCDPageNumber = 0;
-
 /* Pin Assignments */
+//RC Controller
 const int RCcontrolY = 9;
 const int RCcontrolX = 8;
-
 const int motorLeftForward = 3;
 const int motorLeftBackward = 4;
+//H-Bridge
 const int motorLeftPWM = 5; //I think this is wired backwards...
-
 const int motorRightForward = 7;
 const int motorRightBackward = 6; 
 const int motorRightPWM = 2; //I think this is wired backwards...
-
+//Hall Sensors
+int wheelHallSensorLeft = 0;
+int wheelHallSensorRight = 0;
+//Current Sensor
 const int AnalogVoltageDividerPin = 0;
+//Hall Sensors
 const int wheelLefttHallSensorPin = 7;
 const int wheelRightHallSensorPin = 6;
-
-//Eyes - Order these correctly
-const int ledPinEyeRight7 = 26;
-const int ledPinEyeRight4 = 27;
-const int ledPinEyeRight6 = 28;
-const int ledPinEyeRight3 = 29;
-const int ledPinEyeRight5 = 30;
-const int ledPinEyeRight2 = 31;
+// Right Eye
 const int ledPinEyeRight0 = 32;
-const int ledPinEyeRight10 = 33; 
-const int ledPinEyeRight12 = 34;
-const int ledPinEyeRight9 = 35;
-const int ledPinEyeRight11 = 36;
-const int ledPinEyeRight8 = 37;
 const int ledPinEyeRight1 = 38; 
-
+const int ledPinEyeRight2 = 31;
+const int ledPinEyeRight3 = 29;
+const int ledPinEyeRight4 = 27;
+const int ledPinEyeRight5 = 30;
+const int ledPinEyeRight6 = 28;
+const int ledPinEyeRight7 = 26;
+const int ledPinEyeRight8 = 37;
+const int ledPinEyeRight9 = 35;
+const int ledPinEyeRight10 = 33; 
+const int ledPinEyeRight11 = 36;
+const int ledPinEyeRight12 = 34;
+//Left Eye
 const int ledPinEyeLeft0 = 40;
-const int ledPinEyeLeft10 = 41;
-const int ledPinEyeLeft12 = 42;
-const int ledPinEyeLeft9 = 43;
-const int ledPinEyeLeft11 = 44; 
-const int ledPinEyeLeft8 = 45; 
-const int ledPinEyeLeft7 = 46; 
-const int ledPinEyeLeft4 = 47; 
-const int ledPinEyeLeft6 = 48; 
-const int ledPinEyeLeft3 = 49; 
-const int ledPinEyeLeft5 = 50; 
-const int ledPinEyeLeft2 = 51; 
 const int ledPinEyeLeft1 = 52;
-
-unsigned long UptimeMillis;
-
-//Timers 
-Timer t;
-
-/* Serial Display */
-const int serialPrintRefreshRateMilli = 1000;
-unsigned long serialPrintLastUpdateMilli = 0;
-
+const int ledPinEyeLeft2 = 51; 
+const int ledPinEyeLeft3 = 49; 
+const int ledPinEyeLeft4 = 47; 
+const int ledPinEyeLeft5 = 50; 
+const int ledPinEyeLeft6 = 48; 
+const int ledPinEyeLeft7 = 46; 
+const int ledPinEyeLeft8 = 45; 
+const int ledPinEyeLeft9 = 43;
+const int ledPinEyeLeft10 = 41;
+const int ledPinEyeLeft11 = 44; 
+const int ledPinEyeLeft12 = 42;
+//Back Power Button LED
+const int ledBackPowerButton = 9;
+//Plasma Relay
+const int relayPinPlasmaGlobe = 23;
+/* Globals */
 int RCcontrolYPWM = 0;
 int RCcontrolYPWMTop = 1973;
 int RCcontrolYPWMMiddle = 1540;
 int RCcontrolYPWMBottom = 1061;
 int RCcontrolPWMYBuffer = 50;
 int RCcontrolPWMXBuffer = 50;
+int RCcontrolXPWM = 0;
+int RCcontrolXPWMTop = 1972;
+int RCcontrolXPWMMiddle = 1510;
+int RCcontrolXPWMBottom = 1059; 
+int motorLeftCurentPWM = 0;
+int motorRightCurentPWM = 0;
+int motorMinimumPWMforActuation = 95;
+float motorBatteryVoltageNow = 0.0;
+float motorBatteryVoltageHigh = 0.0;
+float motorBatteryVoltageLow = 12.0;
+int wheelRotationsLeft = 0;
+int WheelRotationsRight = 0;
+int LCDPageNumber = 0;
+int backPowerButtonPWM = 0;
+int backPowerButtonCycleState = 0;
+int backPowerButtonPulseSteps[] = {0,1,2,5,10,255,20,30,40,50,60,70,80,90,100,255,100,90,80,70,60,50,40,30,20,10,0};
+int backPowerButtonPulsePosition = 0;
 
 //Not fully implemented yet
 int RCcontrolYPWMRangeSpread = 0;
 int RCcontrolYPWMTopDynamic = RCcontrolYPWMBottom;
 int RCcontrolYPWMMiddleDynamic = 0;
 int RCcontrolYPWMBottomDynamic = RCcontrolYPWMTop;
-
-int RCcontrolXPWM = 0;
-int RCcontrolXPWMTop = 1972;
-int RCcontrolXPWMMiddle = 1510;
-int RCcontrolXPWMBottom = 1059; 
-
-//Not fully implemented yet
 int RCcontrolXPWMRangeSpread = 0;
 int RCcontrolXPWMTopDynamic = RCcontrolXPWMBottom;
 int RCcontrolXPWMMiddleDynamic = 0;
 int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
-
-int motorLeftCurentPWM = 0;
-int motorRightCurentPWM = 0;
-int motorMinimumPWMforActuation = 95;
-
-float motorBatteryVoltageNow = 0.0;
-float motorBatteryVoltageHigh = 0.0;
-float motorBatteryVoltageLow = 12.0;
-
-/* Wheel Hall Sensors */
-int wheelHallSensorLeft = 0;
-int wheelHallSensorRight = 0;
-int wheelRotationsLeft = 0;
-int WheelRotationsRight = 0;
-
-/* Enumerations */
+/* Enumerations */ 
 const int displayVerbose = 1;
-
-// States 
+// automation States 
 const int stateUndefined = 0;
 const int stateNoRCSignal = 5;
 const int stateStationary = 10;
@@ -134,28 +111,71 @@ const int stateMoveBackwardSteerLeft = 32;
 const int stateMoveBackwardSteerRight = 34;
 const int stateMoveRotateLeft = 40;
 const int stateMoveRotateRight = 50;
-
-int automationState = stateUndefined;
+int automationCurrentState = stateUndefined;
+/* Library Objects */
+//LiquidCrystal_I2C lcd(0x27,16,2); // set the LCD address to 0x27
+//Timers 
+unsigned long UptimeMillis;
+const int serialPrintRefreshRateMilli = 1000;
+unsigned long serialPrintLastUpdateMilli = 0;
+Timer timerEyeBlink;
+Timer timerBackPowerButtonPulse;
 
 void setup() {
 	Serial.begin(9600);
 	//lcd.init();
 	//lcd.backlight();
 
+	setHBridgePins();
 	pinMode(RCcontrolY, INPUT);
 	pinMode(RCcontrolX, INPUT);
-
-	pinMode(motorLeftPWM, OUTPUT); 
-	pinMode(motorLeftBackward, OUTPUT); 
-	pinMode(motorLeftForward, OUTPUT); 
-
-	pinMode(motorRightPWM, OUTPUT); 
-	pinMode(motorRightBackward, OUTPUT); 
-	pinMode(motorRightForward, OUTPUT);
-
 	pinMode(wheelLefttHallSensorPin, INPUT);
 	pinMode(wheelRightHallSensorPin, INPUT);
 
+	pinMode(ledBackPowerButton, OUTPUT);
+	pinMode(relayPinPlasmaGlobe, OUTPUT);
+
+	setEyePins();
+	eyesOpen();
+	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
+	//TODO: When moving change to 1 second heartbeat, normally 2 second heartbeat
+	int tickEventBackPowerButton = timerBackPowerButtonPulse.every(70, powerButtonArrayPulse); //70
+}
+void loop() {
+	UptimeMillis = millis();
+
+	timerEyeBlink.update();
+	timerBackPowerButtonPulse.update();
+
+	//Turn on plasma globe
+	digitalWrite(relayPinPlasmaGlobe, LOW);
+
+	//motorBatteryAnalogVoltageDividerRead();
+	//wheelHallSensorsRead();
+
+	RCReadControls();
+
+	if (RCsignal()){
+		//lcd.setBacklight(1);
+		RCActivateState();
+	}
+	if (! RCsignal()){
+		actionStationary();
+		automationStateSet(stateNoRCSignal);
+	}
+
+	automationStateSerialPrint(displayVerbose);
+}
+
+void setHBridgePins(){
+	pinMode(motorLeftPWM, OUTPUT); 
+	pinMode(motorLeftBackward, OUTPUT); 
+	pinMode(motorLeftForward, OUTPUT); 
+	pinMode(motorRightPWM, OUTPUT); 
+	pinMode(motorRightBackward, OUTPUT); 
+	pinMode(motorRightForward, OUTPUT);
+}
+void setEyePins(){
 	pinMode(ledPinEyeRight0, OUTPUT); 
 	pinMode(ledPinEyeRight1, OUTPUT); 
 	pinMode(ledPinEyeRight2, OUTPUT); 
@@ -183,31 +203,40 @@ void setup() {
 	pinMode(ledPinEyeLeft10, OUTPUT); 
 	pinMode(ledPinEyeLeft11, OUTPUT); 
 	pinMode(ledPinEyeLeft12, OUTPUT);
-
-	eyesOpen();
-	int tickEvent = t.every(11000, eyesBlink);
 }
-void loop() {
-	UptimeMillis = millis();
 
-	t.update();
-
-	//motorBatteryAnalogVoltageDividerRead();
-	//wheelHallSensorsRead();
-
-	RCReadControls();
-
-	if (RCsignal()){
-		//lcd.setBacklight(1);
-		RCActivateState();
+//Back Power Button LED
+void PowerButtonPulse(){
+	if (backPowerButtonCycleState == 0){
+		backPowerButtonPWM = backPowerButtonPWM + 5;
 	}
-	if (! RCsignal()){
-		actionStationary();
-		automationStateSet(stateNoRCSignal);
+	else if (backPowerButtonCycleState == 1){
+		backPowerButtonPWM = backPowerButtonPWM - 5;
 	}
 
-	automationStateSerialPrint(displayVerbose);
+	if (backPowerButtonPWM > 120)
+	{
+		backPowerButtonCycleState = 1;
+	}
+	else if (backPowerButtonPWM < 10)
+	{
+		backPowerButtonCycleState = 0;
+	}
+
+	analogWrite(ledBackPowerButton, backPowerButtonPWM);
 }
+void powerButtonArrayPulse(){
+	if (backPowerButtonPulsePosition < 24){
+		backPowerButtonPulsePosition = backPowerButtonPulsePosition + 1;
+	}
+	else
+	{ 
+		backPowerButtonPulsePosition = 0;
+	}
+	analogWrite(ledBackPowerButton, backPowerButtonPulseSteps[backPowerButtonPulsePosition]);
+}
+
+//Eyes
 void eyesBlink(){
 	digitalWrite(ledPinEyeLeft0, LOW);
 	digitalWrite(ledPinEyeLeft1, LOW);
@@ -248,7 +277,7 @@ void eyesBlink(){
 	digitalWrite(ledPinEyeLeft7, HIGH);
 	digitalWrite(ledPinEyeRight6, HIGH);
 	digitalWrite(ledPinEyeRight7, HIGH);
-    delay(20);
+	delay(20);
 	digitalWrite(ledPinEyeLeft5, HIGH);
 	digitalWrite(ledPinEyeLeft8, HIGH);
 	digitalWrite(ledPinEyeRight5, HIGH);
@@ -336,6 +365,8 @@ void eyesClose(){
 	digitalWrite(ledPinEyeLeft11, LOW);
 	digitalWrite(ledPinEyeLeft12, LOW);
 }
+
+//Additional sensors
 void motorBatteryAnalogVoltageDividerRead()
 {
 	float sensorValue;
@@ -350,20 +381,12 @@ void wheelHallSensorsRead()
 	wheelHallSensorRight = digitalRead(wheelRightHallSensorPin);
 }
 
+//Automation settings
 void automationStateSet(int stateType){
-	automationState = stateType;
-}
-void automationStateSerialPrint(int displayType){
-	if(UptimeMillis - serialPrintLastUpdateMilli > serialPrintRefreshRateMilli) {
-		serialPrintLastUpdateMilli = UptimeMillis; 
-		if (displayType == displayVerbose) {
-			Serial.println(automationStateVerboseFormat());
-			//LCDdisplay(automationStateVerboseFormat());
-		}
-	}
+	automationCurrentState = stateType;
 }
 String automationStateVerboseFormat(){
-	switch (automationState){
+	switch (automationCurrentState){
 	case stateUndefined:
 		return("Undefined");
 	case stateNoRCSignal:
@@ -389,10 +412,20 @@ String automationStateVerboseFormat(){
 	}
 }
 
+//LCD output
+void automationStateSerialPrint(int displayType){
+	if(UptimeMillis - serialPrintLastUpdateMilli > serialPrintRefreshRateMilli) {
+		serialPrintLastUpdateMilli = UptimeMillis; 
+		if (displayType == displayVerbose) {
+			Serial.println(automationStateVerboseFormat());
+			//LCDdisplay(automationStateVerboseFormat());
+		}
+	}
+}
 void LCDdisplay(String state){
 	//lcd.clear();
 
-	if (automationState == stateMoveForward || automationState == stateMoveForwardSteerLeft || automationState == stateMoveForwardSteerRight){
+	if (automationCurrentState == stateMoveForward || automationCurrentState == stateMoveForwardSteerLeft || automationCurrentState == stateMoveForwardSteerRight){
 		//lcd.setCursor(0,0);
 		//lcd.print("MotorPWM ");
 		//lcd.print(motorLeftCurentPWM);
@@ -472,6 +505,7 @@ void LCDdisplay(String state){
 	}
 }
 
+//Read RC controller
 boolean RCsignal()
 {
 	return RCcontrolYPWM > 0 && RCcontrolXPWM > 0;
@@ -535,7 +569,7 @@ void RCActivateState(){
 	}
 }
 
-// 
+// Movement trigger tolerances
 boolean RCcontrolIsMoveForwardRequested()
 {
 	return RCcontrolYPWM < (RCcontrolYPWMMiddle - RCcontrolPWMYBuffer);
@@ -551,7 +585,7 @@ boolean RCcontrolIsMoveRotateRightRequested(){
 	return RCcontrolXPWM > (RCcontrolXPWMMiddle + RCcontrolPWMXBuffer);
 }
 
-// Movement PWM Settings and Actuation 
+// Movement PWM settings and actuation 
 void actionMoveForward()
 {
 	automationStateSet(stateMoveForward);

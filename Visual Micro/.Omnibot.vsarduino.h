@@ -28,14 +28,18 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void setHBridgePins();
+void setEyePins();
+void PowerButtonPulse();
+void powerButtonArrayPulse();
 void eyesBlink();
 void eyesOpen();
 void eyesClose();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
 void automationStateSet(int stateType);
-void automationStateSerialPrint(int displayType);
 String automationStateVerboseFormat();
+void automationStateSerialPrint(int displayType);
 void LCDdisplay(String state);
 boolean RCsignal();
 void RCReadControls();

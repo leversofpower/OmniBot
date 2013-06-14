@@ -1,0 +1,16 @@
+TODO
+
+1. Low Power Mode
+2. Raise heart beat on moving for longer then 5 seconds
+
+RC Controller
+
+ch1
+rest 1524 - 1532 / Varience 8
+high 1876 -1985 direction down / Varience 9
+low 1053 - 1065 direction up / Varience 12 
+
+ch2 rest 1502 - 1509 / Varience 7
+high 1968 - 1972 direction right / Varience 4
+low 1056 - 1062 direction left / Varience 6
+Average Varience 7.6

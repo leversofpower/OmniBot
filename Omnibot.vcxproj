@@ -68,20 +68,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="ClassDiagram.cd" />
     <None Include="Omnibot.ino">
       <FileType>CppCode</FileType>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Omnibot\Timer-master\Timer.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Visual Micro\.Omnibot.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Omnibot.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\Omnibot\Timer-master\Timer.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
