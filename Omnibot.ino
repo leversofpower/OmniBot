@@ -60,7 +60,7 @@ const int ledPinEyeLeft10 = 41;
 const int ledPinEyeLeft11 = 44; 
 const int ledPinEyeLeft12 = 42;
 //Back Power Button LED
-const int ledBackPowerButton = 9;
+const int ledBackPowerButton = 10;
 //Plasma Relay
 const int relayPinPlasmaGlobe = 23;
 /* Globals */
@@ -83,11 +83,16 @@ float motorBatteryVoltageLow = 12.0;
 int wheelRotationsLeft = 0;
 int WheelRotationsRight = 0;
 int LCDPageNumber = 0;
+// automation state
+int automationCurrentState = 0;
+unsigned long automationCurrentStateElapsedMillis = 0;
+unsigned long automationStateLastMillisMeasure = 0;
+// angel eye power button 
 int backPowerButtonPWM = 0;
-int backPowerButtonCycleState = 0;
+int backPowerButtonPulseRate = 70;
 int backPowerButtonPulseSteps[] = {0,1,2,5,10,255,20,30,40,50,60,70,80,90,100,255,100,90,80,70,60,50,40,30,20,10,0};
 int backPowerButtonPulsePosition = 0;
-
+unsigned long backPowerButtonLastPulse = 0;
 //Not fully implemented yet
 int RCcontrolYPWMRangeSpread = 0;
 int RCcontrolYPWMTopDynamic = RCcontrolYPWMBottom;
@@ -99,7 +104,7 @@ int RCcontrolXPWMMiddleDynamic = 0;
 int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
 /* Enumerations */ 
 const int displayVerbose = 1;
-// automation States 
+// automation state enumerations
 const int stateUndefined = 0;
 const int stateNoRCSignal = 5;
 const int stateStationary = 10;
@@ -111,16 +116,16 @@ const int stateMoveBackwardSteerLeft = 32;
 const int stateMoveBackwardSteerRight = 34;
 const int stateMoveRotateLeft = 40;
 const int stateMoveRotateRight = 50;
-int automationCurrentState = stateUndefined;
 /* Library Objects */
 //LiquidCrystal_I2C lcd(0x27,16,2); // set the LCD address to 0x27
 //Timers 
 unsigned long UptimeMillis;
+
 const int serialPrintRefreshRateMilli = 1000;
 unsigned long serialPrintLastUpdateMilli = 0;
-Timer timerEyeBlink;
-Timer timerBackPowerButtonPulse;
 
+Timer timerEyeBlink;
+Timer timeBackPowerButtonPulseRateCheck;
 void setup() {
 	Serial.begin(9600);
 	//lcd.init();
@@ -139,20 +144,23 @@ void setup() {
 	eyesOpen();
 	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
 	//TODO: When moving change to 1 second heartbeat, normally 2 second heartbeat
-	int tickEventBackPowerButton = timerBackPowerButtonPulse.every(70, powerButtonArrayPulse); //70
+	//tickEventBackPowerButton = timerBackPowerButtonPulse.every(backPowerButtonPulseRate, backPowerButtonPulse); //70
+
 }
 void loop() {
 	UptimeMillis = millis();
 
+	//Eyes
 	timerEyeBlink.update();
-	timerBackPowerButtonPulse.update();
+
+	//Back Power Button
+	BackPowerButtonPulseRateChange();
+	backPowerButtonPulse();
 
 	//Turn on plasma globe
 	digitalWrite(relayPinPlasmaGlobe, LOW);
 
-	//motorBatteryAnalogVoltageDividerRead();
-	//wheelHallSensorsRead();
-
+	//RC Controller
 	RCReadControls();
 
 	if (RCsignal()){
@@ -165,6 +173,8 @@ void loop() {
 	}
 
 	automationStateSerialPrint(displayVerbose);
+	//motorBatteryAnalogVoltageDividerRead();
+	//wheelHallSensorsRead();
 }
 
 void setHBridgePins(){
@@ -205,35 +215,49 @@ void setEyePins(){
 	pinMode(ledPinEyeLeft12, OUTPUT);
 }
 
-//Back Power Button LED
-void PowerButtonPulse(){
-	if (backPowerButtonCycleState == 0){
-		backPowerButtonPWM = backPowerButtonPWM + 5;
+//Back Power Button
+void backPowerButtonPulse(){
+	if(UptimeMillis - backPowerButtonLastPulse > backPowerButtonPulseRate) {
+		if (backPowerButtonPulsePosition < 24){
+			backPowerButtonLastPulse = UptimeMillis;
+			backPowerButtonPulsePosition = backPowerButtonPulsePosition + 1;
+		}
+		else
+		{ 
+			backPowerButtonPulsePosition = 0;
+		}
+		analogWrite(ledBackPowerButton, backPowerButtonPulseSteps[backPowerButtonPulsePosition]);
 	}
-	else if (backPowerButtonCycleState == 1){
-		backPowerButtonPWM = backPowerButtonPWM - 5;
-	}
-
-	if (backPowerButtonPWM > 120)
-	{
-		backPowerButtonCycleState = 1;
-	}
-	else if (backPowerButtonPWM < 10)
-	{
-		backPowerButtonCycleState = 0;
-	}
-
-	analogWrite(ledBackPowerButton, backPowerButtonPWM);
 }
-void powerButtonArrayPulse(){
-	if (backPowerButtonPulsePosition < 24){
-		backPowerButtonPulsePosition = backPowerButtonPulsePosition + 1;
+void BackPowerButtonPulseRateChange(){
+	if ((automationCurrentState == stateMoveForward) || (automationCurrentState == stateMoveForwardSteerLeft) || (automationCurrentState == stateMoveForwardSteerRight)
+		|| (automationCurrentState == stateMoveBackward) || (automationCurrentState == stateMoveBackwardSteerLeft) || (automationCurrentState == stateMoveBackwardSteerRight)
+		|| (automationCurrentState == stateMoveRotateLeft) || (automationCurrentState == stateMoveRotateRight)){
+			//check time spent moving to determin speed up
+			if ((automationCurrentStateElapsedMillis > 2000) && (automationCurrentStateElapsedMillis < 5000)){
+				backPowerButtonPulseRate = 50; 
+
+			}
+			else if ((automationCurrentStateElapsedMillis > 5000) && (automationCurrentStateElapsedMillis < 15000)){
+				backPowerButtonPulseRate = 25;
+			}
+			else if (automationCurrentStateElapsedMillis > 15000){
+				backPowerButtonPulseRate = 5; // exhausted
+			}
 	}
-	else
-	{ 
-		backPowerButtonPulsePosition = 0;
+	else if ((automationCurrentState == stateStationary) ||  (automationCurrentState == stateNoRCSignal)){
+		//Check time spent resting to cool down
+		if ((automationCurrentStateElapsedMillis > 2000) && (automationCurrentStateElapsedMillis < 5000)){
+			backPowerButtonPulseRate = 50; 
+
+		}
+		else if ((automationCurrentStateElapsedMillis > 5000) && (automationCurrentStateElapsedMillis < 30000)){
+			backPowerButtonPulseRate = 80; // normal pulse
+		}
+		else if (automationCurrentStateElapsedMillis > 30000){
+			backPowerButtonPulseRate = 170; // resting
+		}
 	}
-	analogWrite(ledBackPowerButton, backPowerButtonPulseSteps[backPowerButtonPulsePosition]);
 }
 
 //Eyes
@@ -366,23 +390,18 @@ void eyesClose(){
 	digitalWrite(ledPinEyeLeft12, LOW);
 }
 
-//Additional sensors
-void motorBatteryAnalogVoltageDividerRead()
-{
-	float sensorValue;
-	sensorValue = analogRead(AnalogVoltageDividerPin);
-	motorBatteryVoltageNow = (sensorValue / 4.092) * .1;
-	motorBatteryVoltageHigh = max(motorBatteryVoltageNow, motorBatteryVoltageHigh);
-	motorBatteryVoltageLow = min(motorBatteryVoltageNow, motorBatteryVoltageLow);
-}
-void wheelHallSensorsRead()
-{
-	wheelHallSensorLeft = digitalRead(wheelLefttHallSensorPin);
-	wheelHallSensorRight = digitalRead(wheelRightHallSensorPin);
-}
-
 //Automation settings
 void automationStateSet(int stateType){
+	//Set time in current state
+	if (stateType == automationCurrentState){
+		automationCurrentStateElapsedMillis = automationCurrentStateElapsedMillis + (UptimeMillis - automationStateLastMillisMeasure);
+		automationStateLastMillisMeasure = UptimeMillis;
+	}
+	else //changed state. reset time.
+	{
+		automationCurrentStateElapsedMillis = 0;
+	}
+
 	automationCurrentState = stateType;
 }
 String automationStateVerboseFormat(){
@@ -692,4 +711,19 @@ void actionStationary()
 	digitalWrite(motorLeftForward, LOW);
 	digitalWrite(motorRightForward, LOW);
 	digitalWrite(motorRightBackward, LOW);
+}
+
+//Additional sensors
+void motorBatteryAnalogVoltageDividerRead()
+{
+	float sensorValue;
+	sensorValue = analogRead(AnalogVoltageDividerPin);
+	motorBatteryVoltageNow = (sensorValue / 4.092) * .1;
+	motorBatteryVoltageHigh = max(motorBatteryVoltageNow, motorBatteryVoltageHigh);
+	motorBatteryVoltageLow = min(motorBatteryVoltageNow, motorBatteryVoltageLow);
+}
+void wheelHallSensorsRead()
+{
+	wheelHallSensorLeft = digitalRead(wheelLefttHallSensorPin);
+	wheelHallSensorRight = digitalRead(wheelRightHallSensorPin);
 }

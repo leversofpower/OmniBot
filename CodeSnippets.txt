@@ -1,27 +1,27 @@
-0 0
-1 10 
-2 20
-3 35
-4 150
-5 200
-6 150
-7 75
-8 85
-9 95
-10 110
-11 120
-12 130
-13 140
-14 150
-15 175
-16 200
-   175
-17 110
-18 90
-19 80
-20 75
-21 60
-22 45
-23 35
-24 15
-25 0
+void BackPowerButtonPulseRateChange(){
+	if ((automationCurrentState == stateMoveForward) || (automationCurrentState == stateMoveForwardSteerLeft) || (automationCurrentState == stateMoveForwardSteerRight)
+		|| (automationCurrentState == stateMoveBackward) || (automationCurrentState == stateMoveBackwardSteerLeft) || (automationCurrentState == stateMoveBackwardSteerRight)
+		|| (automationCurrentState == stateMoveRotateLeft) || (automationCurrentState == stateMoveRotateRight)){
+			//check time spent moving to determin speed up
+			if (automationCurrentStateTime > 3000){
+				backPowerButtonPulseRate = 40; 
+			}
+			else if (automationCurrentStateTime > 6000){
+				backPowerButtonPulseRate = 30; 
+			}
+			else if (automationCurrentStateTime > 10000){
+				backPowerButtonPulseRate = 10; // exhausted
+			}
+	}
+	else if (automationCurrentState = stateStationary) {
+		//Check time spent resting to cool down
+		if (automationCurrentStateTime > 2000){
+			backPowerButtonPulseRate = 50; 
+		}
+		else if (automationCurrentStateTime > 5000){
+			backPowerButtonPulseRate = 70; // normal pulse
+		}
+		else if (automationCurrentStateTime > 30000){
+			backPowerButtonPulseRate = 90; // resting
+		}
+	}

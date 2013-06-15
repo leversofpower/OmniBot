@@ -30,13 +30,11 @@ extern "C" void __cxa_pure_virtual() {;}
 //
 void setHBridgePins();
 void setEyePins();
-void PowerButtonPulse();
-void powerButtonArrayPulse();
+void backPowerButtonPulse();
+void BackPowerButtonPulseRateChange();
 void eyesBlink();
 void eyesOpen();
 void eyesClose();
-void motorBatteryAnalogVoltageDividerRead();
-void wheelHallSensorsRead();
 void automationStateSet(int stateType);
 String automationStateVerboseFormat();
 void automationStateSerialPrint(int displayType);
@@ -56,6 +54,8 @@ void actionMoveRotateLeft();
 void actionMoveRotateRight();
 void actionMoveSteer(int motorPWM, int state);
 void actionStationary();
+void motorBatteryAnalogVoltageDividerRead();
+void wheelHallSensorsRead();
 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
