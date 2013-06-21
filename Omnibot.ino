@@ -1,6 +1,7 @@
 /*
 TODO:
 Fix Right rotation PWM clipping on the extreme right PWM scale
+rotate one pass of hall sensor to check rotation angle
 Break Blinking into two seperate timers. One for lid down and one for lid up.
 Create array for the states. Add time spent in state for each state. Add last activate time of day.
 State Based LCD Display:
@@ -10,8 +11,10 @@ Create LCD Message que
 /* Includes */
 #include <Timer.h>
 #include <Event.h>
-//#include <Wire.h>
-//#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+//http://www.dfrobot.com/index.php?route=product/product&filter_name=DFR0063&product_id=135#.Ub9pOZzm8cl
+
 /* Pin Assignments */
 //RC Controller
 const int RCcontrolY = 9;
@@ -26,11 +29,24 @@ const int motorRightPWM = 2; //I think this is wired backwards...
 //Hall Sensors
 int wheelHallSensorLeft = 0;
 int wheelHallSensorRight = 0;
+
+/****************Need Deffinition*****************/
 //Current Sensor
 const int AnalogVoltageDividerPin = 0;
-//Hall Sensors
-const int wheelLefttHallSensorPin = 7;
-const int wheelRightHallSensorPin = 6;
+//Hall Sensors DEFINE
+const int wheelLefttHallSensorPin = 0;
+const int wheelRightHallSensorPin = 0;
+//Vibration Sensor DEFINE
+const int vibrationSensor = 0;
+/**************************************************/
+
+//CDS Sensors
+const int CDSSensor1Frount = 1;
+const int CDSSensor2Back = 2;
+const int CDSSensor3Left = 3;
+const int CDSSensor4Right = 4;
+const int CDSSensor5Top = 5;
+
 // Right Eye
 const int ledPinEyeRight0 = 32;
 const int ledPinEyeRight1 = 38; 
@@ -64,6 +80,7 @@ const int ledBackPowerButton = 10;
 //Plasma Relay
 const int relayPinPlasmaGlobe = 23;
 /* Globals */
+unsigned long UptimeMillis;
 int RCcontrolYPWM = 0;
 int RCcontrolYPWMTop = 1973;
 int RCcontrolYPWMMiddle = 1540;
@@ -80,19 +97,31 @@ int motorMinimumPWMforActuation = 95;
 float motorBatteryVoltageNow = 0.0;
 float motorBatteryVoltageHigh = 0.0;
 float motorBatteryVoltageLow = 12.0;
+
+// Hall Sensors
 int wheelRotationsLeft = 0;
 int WheelRotationsRight = 0;
+int wheelRotationsLeftState = 0;
+int WheelRotationsRightState = 0;
+
 int LCDPageNumber = 0;
 // automation state
 int automationCurrentState = 0;
 unsigned long automationCurrentStateElapsedMillis = 0;
 unsigned long automationStateLastMillisMeasure = 0;
-// angel eye power button 
+// Angel eye power button 
 int backPowerButtonPWM = 0;
 int backPowerButtonPulseRate = 70;
 int backPowerButtonPulseSteps[] = {0,1,2,5,10,255,20,30,40,50,60,70,80,90,100,255,100,90,80,70,60,50,40,30,20,10,0};
 int backPowerButtonPulsePosition = 0;
 unsigned long backPowerButtonLastPulse = 0;
+
+int CDSSensor1FrountValue = 0;
+int CDSSensor2BackValue = 0;
+int CDSSensor3LeftValue = 0;
+int CDSSensor4RightValue = 0;
+int CDSSensor5TopValue = 0;
+
 //Not fully implemented yet
 int RCcontrolYPWMRangeSpread = 0;
 int RCcontrolYPWMTopDynamic = RCcontrolYPWMBottom;
@@ -104,6 +133,8 @@ int RCcontrolXPWMMiddleDynamic = 0;
 int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
 /* Enumerations */ 
 const int displayVerbose = 1;
+const int serialPrintRefreshRateMilli = 1000;
+unsigned long serialPrintLastUpdateMilli = 0;
 // automation state enumerations
 const int stateUndefined = 0;
 const int stateNoRCSignal = 5;
@@ -116,20 +147,18 @@ const int stateMoveBackwardSteerLeft = 32;
 const int stateMoveBackwardSteerRight = 34;
 const int stateMoveRotateLeft = 40;
 const int stateMoveRotateRight = 50;
+
 /* Library Objects */
-//LiquidCrystal_I2C lcd(0x27,16,2); // set the LCD address to 0x27
+//LiquidCrystal_I2C lcd(0x27,16,2); OLD LCD
+LiquidCrystal_I2C lcd(0x27,20,4);
 //Timers 
-unsigned long UptimeMillis;
-
-const int serialPrintRefreshRateMilli = 1000;
-unsigned long serialPrintLastUpdateMilli = 0;
-
 Timer timerEyeBlink;
 Timer timeBackPowerButtonPulseRateCheck;
+
 void setup() {
 	Serial.begin(9600);
-	//lcd.init();
-	//lcd.backlight();
+	lcd.init();
+	lcd.backlight();
 
 	setHBridgePins();
 	pinMode(RCcontrolY, INPUT);
@@ -142,10 +171,12 @@ void setup() {
 
 	setEyePins();
 	eyesOpen();
-	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
-	//TODO: When moving change to 1 second heartbeat, normally 2 second heartbeat
-	//tickEventBackPowerButton = timerBackPowerButtonPulse.every(backPowerButtonPulseRate, backPowerButtonPulse); //70
+	setCDSPins();
 
+	//Turn on plasma globe
+	digitalWrite(relayPinPlasmaGlobe, LOW);
+
+	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
 }
 void loop() {
 	UptimeMillis = millis();
@@ -154,29 +185,34 @@ void loop() {
 	timerEyeBlink.update();
 
 	//Back Power Button
-	BackPowerButtonPulseRateChange();
+	backPowerButtonPulseRateChange();
 	backPowerButtonPulse();
 
-	//Turn on plasma globe
-	digitalWrite(relayPinPlasmaGlobe, LOW);
-
 	//RC Controller
-	RCReadControls();
+	RCReadControlPWM();
+	RCAutomationStateSet();
 
-	if (RCsignal()){
-		//lcd.setBacklight(1);
-		RCActivateState();
-	}
-	if (! RCsignal()){
-		actionStationary();
-		automationStateSet(stateNoRCSignal);
-	}
+	//Batter Monitoring
+	motorBatteryAnalogVoltageDividerRead();
 
+	//Wheel Rotations
+	wheelHallSensorsRead();
+
+	//CDS Monitoring
+	CDSSensorRead();
+
+	//LCD SCreen
 	automationStateSerialPrint(displayVerbose);
-	//motorBatteryAnalogVoltageDividerRead();
-	//wheelHallSensorsRead();
 }
 
+//Setup Methods
+void setCDSPins(){
+	pinMode(CDSSensor1Frount, INPUT); 
+	pinMode(CDSSensor2Back, INPUT); 
+	pinMode(CDSSensor3Left, INPUT); 
+	pinMode(CDSSensor4Right, INPUT); 
+	pinMode(CDSSensor5Top, INPUT); 
+}
 void setHBridgePins(){
 	pinMode(motorLeftPWM, OUTPUT); 
 	pinMode(motorLeftBackward, OUTPUT); 
@@ -215,6 +251,74 @@ void setEyePins(){
 	pinMode(ledPinEyeLeft12, OUTPUT);
 }
 
+void CDSSensorRead(){
+
+	CDSSensor1FrountValue = analogRead(CDSSensor1Frount);
+	CDSSensor2BackValue = analogRead(CDSSensor2Back);
+	CDSSensor3LeftValue = analogRead(CDSSensor3Left);
+	CDSSensor4RightValue = analogRead(CDSSensor4Right);
+	CDSSensor5TopValue = analogRead(CDSSensor5Top);
+
+	//// We'll have a few threshholds, qualitatively determined
+	//if (photocellReading < 10) {
+	//	Serial.println(" - Dark");
+	//} else if (photocellReading < 200) {
+	//	Serial.println(" - Dim");
+	//} else if (photocellReading < 500) {
+	//	Serial.println(" - Light");
+	//} else if (photocellReading < 800) {
+	//	Serial.println(" - Bright");
+	//} else {
+	//	Serial.println(" - Very bright");
+	//}
+}
+
+//Automation settings
+void automationStateSet(int stateType){
+	//Set time in current state
+	if (stateType == automationCurrentState){
+		//automationCurrentStateElapsedMillis = automationCurrentStateElapsedMillis + (UptimeMillis - automationStateLastMillisMeasure);
+		automationCurrentStateElapsedMillis = UptimeMillis;
+		automationStateLastMillisMeasure = UptimeMillis;
+		wheelRotationsLeftState = wheelRotationsLeftState + (WheelRotationsRight - wheelRotationsLeftState);
+		// 10							10							10						12
+	}
+	else //changed state. reset state dependant globals
+	{
+		automationCurrentStateElapsedMillis = 0;
+		wheelRotationsLeftState = 0;
+		WheelRotationsRightState = 0;
+	}
+
+	automationCurrentState = stateType;
+}
+String automationStateVerboseFormat(){
+	switch (automationCurrentState){
+	case stateUndefined:
+		return("Undefined");
+	case stateNoRCSignal:
+		return("No RC Signal");
+	case stateStationary:
+		return("Stationary X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveForward:
+		return("Forward X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveForwardSteerLeft:
+		return("Forward Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveForwardSteerRight:
+		return("Forward Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveBackward:
+		return("Reverse X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveBackwardSteerLeft:
+		return("Reverse Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveBackwardSteerRight:
+		return("Reverse Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveRotateLeft:
+		return("Rotate Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case stateMoveRotateRight:
+		return("Rotate Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	}
+}
+
 //Back Power Button
 void backPowerButtonPulse(){
 	if(UptimeMillis - backPowerButtonLastPulse > backPowerButtonPulseRate) {
@@ -229,7 +333,7 @@ void backPowerButtonPulse(){
 		analogWrite(ledBackPowerButton, backPowerButtonPulseSteps[backPowerButtonPulsePosition]);
 	}
 }
-void BackPowerButtonPulseRateChange(){
+void backPowerButtonPulseRateChange(){
 	if ((automationCurrentState == stateMoveForward) || (automationCurrentState == stateMoveForwardSteerLeft) || (automationCurrentState == stateMoveForwardSteerRight)
 		|| (automationCurrentState == stateMoveBackward) || (automationCurrentState == stateMoveBackwardSteerLeft) || (automationCurrentState == stateMoveBackwardSteerRight)
 		|| (automationCurrentState == stateMoveRotateLeft) || (automationCurrentState == stateMoveRotateRight)){
@@ -390,159 +494,188 @@ void eyesClose(){
 	digitalWrite(ledPinEyeLeft12, LOW);
 }
 
-//Automation settings
-void automationStateSet(int stateType){
-	//Set time in current state
-	if (stateType == automationCurrentState){
-		automationCurrentStateElapsedMillis = automationCurrentStateElapsedMillis + (UptimeMillis - automationStateLastMillisMeasure);
-		automationStateLastMillisMeasure = UptimeMillis;
-	}
-	else //changed state. reset time.
-	{
-		automationCurrentStateElapsedMillis = 0;
-	}
-
-	automationCurrentState = stateType;
-}
-String automationStateVerboseFormat(){
-	switch (automationCurrentState){
-	case stateUndefined:
-		return("Undefined");
-	case stateNoRCSignal:
-		return("No RC Signal");
-	case stateStationary:
-		return("Stationary X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveForward:
-		return("Forward X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveForwardSteerLeft:
-		return("Forward Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveForwardSteerRight:
-		return("Forward Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveBackward:
-		return("Reverse X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveBackwardSteerLeft:
-		return("Reverse Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveBackwardSteerRight:
-		return("Reverse Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveRotateLeft:
-		return("Rotate Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveRotateRight:
-		return("Rotate Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	}
-}
-
 //LCD output
 void automationStateSerialPrint(int displayType){
 	if(UptimeMillis - serialPrintLastUpdateMilli > serialPrintRefreshRateMilli) {
 		serialPrintLastUpdateMilli = UptimeMillis; 
 		if (displayType == displayVerbose) {
-			Serial.println(automationStateVerboseFormat());
+			//Serial.println(automationStateVerboseFormat());
 			//LCDdisplay(automationStateVerboseFormat());
+			LCDdisplayOverride();
 		}
 	}
 }
+void LCDdisplayOverride(){
+	lcd.clear();
+	lcd.setCursor(0,0);
+	lcd.print("CDS PhotoCell Values");
+
+	lcd.setCursor(0,1);
+	lcd.print("Top  ");
+	lcd.print(CDSSensor5TopValue);
+
+	lcd.setCursor(0,2);
+	lcd.print("Frnt ");
+	lcd.print(CDSSensor1FrountValue);
+	lcd.print(" Back  ");
+	lcd.print(CDSSensor2BackValue);
+
+	lcd.setCursor(0,3);
+	lcd.print("Left ");
+	lcd.print(CDSSensor3LeftValue);
+	lcd.print(" Right ");
+	lcd.print(CDSSensor4RightValue);
+}
 void LCDdisplay(String state){
-	//lcd.clear();
+	lcd.clear();
 
 	if (automationCurrentState == stateMoveForward || automationCurrentState == stateMoveForwardSteerLeft || automationCurrentState == stateMoveForwardSteerRight){
-		//lcd.setCursor(0,0);
-		//lcd.print("MotorPWM ");
-		//lcd.print(motorLeftCurentPWM);
-		//lcd.print("/");
-		//lcd.print(motorRightCurentPWM);
+		lcd.setCursor(0,0);
+		lcd.print("MotorPWM ");
+		lcd.print(motorLeftCurentPWM);
+		lcd.print("/");
+		lcd.print(motorRightCurentPWM);
 
-		//lcd.setCursor(0,1);
-		//lcd.print("Vlt ");
-		//lcd.print((int)motorBatteryVoltageHigh);
-		//lcd.print("/");
-		//lcd.print(motorBatteryVoltageNow);
-		//lcd.print("/");
-		//lcd.print((int)motorBatteryVoltageLow);
+		lcd.setCursor(0,1);
+		lcd.print("Vlt ");
+		lcd.print((int)motorBatteryVoltageHigh);
+		lcd.print("/");
+		lcd.print(motorBatteryVoltageNow);
+		lcd.print("/");
+		lcd.print((int)motorBatteryVoltageLow);
+
+		lcd.setCursor(0,2);
+		lcd.print("RC PMM Y/X ");
+		lcd.setCursor(0,1);
+		lcd.print(RCcontrolYPWM);
+		lcd.print("/");
+		lcd.print(RCcontrolXPWM);
 	}
 	else
 	{
-		//switch (LCDPageNumber){
-		//case 1:
-		//	lcd.setCursor(0, 0);
-		//	lcd.print(state);
-		//	break;
+		switch (LCDPageNumber){
+		case 1:
+			lcd.setCursor(0, 0);
+			lcd.print(state);
 
-		//case 2:
-		//	lcd.setCursor(0,0);
-		//	lcd.print("MotorPWM ");
-		//	lcd.print(motorLeftCurentPWM);
-		//	lcd.print("/");
-		//	lcd.print(motorRightCurentPWM);
+			lcd.setCursor(0, 1);
+			lcd.print("State Time ");
+			lcd.print(automationCurrentStateElapsedMillis);
+			break;
 
-		//	lcd.setCursor(0,1);
-		//	lcd.print("Vlt ");
-		//	lcd.print((int)motorBatteryVoltageHigh);
-		//	lcd.print("/");
-		//	lcd.print(motorBatteryVoltageNow);
-		//	lcd.print("/");
-		//	lcd.print((int)motorBatteryVoltageLow);
-		//	break;
+		case 2:
+			lcd.setCursor(0,0);
+			lcd.print("MotorPWM ");
+			lcd.print(motorLeftCurentPWM);
+			lcd.print("/");
+			lcd.print(motorRightCurentPWM);
 
-		//case 3:
-		//	lcd.setCursor(0,0);
-		//	lcd.print("L/R Hall ");
-		//	lcd.print(wheelHallSensorLeft);
-		//	lcd.print("/");
-		//	lcd.print(wheelHallSensorRight);
-		//	break;
+			lcd.setCursor(0,1);
+			lcd.print("Vlt ");
+			lcd.print((int)motorBatteryVoltageHigh);
+			lcd.print("/");
+			lcd.print(motorBatteryVoltageNow);
+			lcd.print("/");
+			lcd.print((int)motorBatteryVoltageLow);
 
-		//case 4:	
-		//	lcd.setCursor(0,0);
-		//	lcd.print("RC PMM Y/X ");
-		//	lcd.setCursor(0,1);
-		//	lcd.print(RCcontrolYPWM);
-		//	lcd.print("/");
-		//	lcd.print(RCcontrolXPWM);
-		//	break;
+			lcd.setCursor(0,2);
+			lcd.print("L/R Hall ");
+			lcd.print(wheelHallSensorLeft);
+			lcd.print("/");
+			lcd.print(wheelHallSensorRight);
+			break;
 
-		//default: //Last page
-		//	lcd.setCursor(0,0);
-		//	lcd.print("Y ");
-		//	lcd.print(RCcontrolYPWMTop);
-		//	lcd.print("/");
-		//	lcd.print(RCcontrolYPWM);
-		//	lcd.print("/");
-		//	lcd.print(RCcontrolYPWMBottom);
+		case 3:
+			lcd.setCursor(0,0);
+			lcd.print("CDS Frount ");
+			lcd.print(CDSSensor1FrountValue);
 
-		//	lcd.setCursor(0,1);
-		//	lcd.print("X ");
-		//	lcd.print(RCcontrolXPWMTop);
-		//	lcd.print("/");
-		//	lcd.print(RCcontrolXPWM);
-		//	lcd.print("/");
-		//	lcd.print(RCcontrolXPWMBottom);
+			lcd.setCursor(0,1);
+			lcd.print("CDS Back ");
+			lcd.print(CDSSensor2BackValue);
 
-		//	LCDPageNumber = 0; 
-		//	break;
-		//}
-		//LCDPageNumber++;
+			lcd.setCursor(0,2);
+			lcd.print("CDS Left ");
+			lcd.print(CDSSensor3LeftValue);
+
+			lcd.setCursor(0,3);
+			lcd.print("CDS Right ");
+			lcd.print(CDSSensor4RightValue);
+
+			//lcd.print(" CDS Top ");
+			//lcd.print(CDSSensor5TopValue);
+			break;
+
+		default://Last page	
+			lcd.setCursor(0,0);
+			lcd.print("RC PMM Y/X ");
+			lcd.setCursor(0,1);
+			lcd.print(RCcontrolYPWM);
+			lcd.print("/");
+			lcd.print(RCcontrolXPWM);
+
+			lcd.setCursor(0,2);
+			lcd.print("Y ");
+			lcd.print(RCcontrolYPWMTop);
+			lcd.print("/");
+			lcd.print(RCcontrolYPWM);
+			lcd.print("/");
+			lcd.print(RCcontrolYPWMBottom);
+
+			lcd.setCursor(0,3);
+			lcd.print("X ");
+			lcd.print(RCcontrolXPWMTop);
+			lcd.print("/");
+			lcd.print(RCcontrolXPWM);
+			lcd.print("/");
+			lcd.print(RCcontrolXPWMBottom);
+
+			LCDPageNumber = 0; 
+			break;
+		}
+		LCDPageNumber++;
 	}
 }
 
 //Read RC controller
-boolean RCsignal()
+void RCReadControlPWM()
 {
-	return RCcontrolYPWM > 0 && RCcontrolXPWM > 0;
-}
-void RCReadControls()
-{
-	RCcontrolXPWM = pulseIn(RCcontrolX, HIGH, 25000);
+	//RCcontrolXPWM = pulseIn(RCcontrolX, HIGH, 25000);
+	RCcontrolXPWM = pulseIn(RCcontrolX, HIGH);
 	if (RCcontrolXPWM != 0){
 		RCcontrolXAutoAdjustLimits(RCcontrolXPWM);
 		RCcontrolXPWM = RCcontrolXPWM == 0 ? RCcontrolXPWMMiddle : RCcontrolXPWM;
 		RCcontrolXPWM = constrain(RCcontrolXPWM, RCcontrolXPWMBottom, RCcontrolXPWMTop);
 	}
 
-	RCcontrolYPWM = pulseIn(RCcontrolY, HIGH, 25000);
+	//RCcontrolYPWM = pulseIn(RCcontrolY, HIGH, 25000);
+	RCcontrolYPWM = pulseIn(RCcontrolY, HIGH);
 	if (RCcontrolYPWM != 0){
 		RCcontrolYAutoAdjustLimits(RCcontrolYPWM);
 		RCcontrolYPWM = RCcontrolYPWM == 0 ? RCcontrolYPWMMiddle : RCcontrolYPWM;
 		RCcontrolYPWM = constrain(RCcontrolYPWM, RCcontrolYPWMBottom, RCcontrolYPWMTop);
+	}
+}
+void RCAutomationStateSet(){
+	bool RChasSignal = false;
+
+	if ((RCcontrolYPWM > 0) && (RCcontrolXPWM > 0))
+	{
+		RChasSignal = true;
+	}
+	else
+	{
+		RChasSignal = false;
+	}
+
+
+	if (RChasSignal == true){
+		//lcd.setBacklight(1);
+		RCActivateState();
+	}
+	if (RChasSignal == false){
+		actionStationary();
+		automationStateSet(stateNoRCSignal);
 	}
 }
 void RCcontrolXAutoAdjustLimits(int RCcontrolX){
@@ -716,8 +849,7 @@ void actionStationary()
 //Additional sensors
 void motorBatteryAnalogVoltageDividerRead()
 {
-	float sensorValue;
-	sensorValue = analogRead(AnalogVoltageDividerPin);
+	float sensorValue = analogRead(AnalogVoltageDividerPin);
 	motorBatteryVoltageNow = (sensorValue / 4.092) * .1;
 	motorBatteryVoltageHigh = max(motorBatteryVoltageNow, motorBatteryVoltageHigh);
 	motorBatteryVoltageLow = min(motorBatteryVoltageNow, motorBatteryVoltageLow);

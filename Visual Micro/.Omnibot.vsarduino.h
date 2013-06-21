@@ -28,19 +28,22 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void setCDSPins();
 void setHBridgePins();
 void setEyePins();
+void CDSSensorRead();
+void automationStateSet(int stateType);
+String automationStateVerboseFormat();
 void backPowerButtonPulse();
-void BackPowerButtonPulseRateChange();
+void backPowerButtonPulseRateChange();
 void eyesBlink();
 void eyesOpen();
 void eyesClose();
-void automationStateSet(int stateType);
-String automationStateVerboseFormat();
 void automationStateSerialPrint(int displayType);
+void LCDdisplayOverride();
 void LCDdisplay(String state);
-boolean RCsignal();
-void RCReadControls();
+void RCReadControlPWM();
+void RCAutomationStateSet();
 void RCcontrolXAutoAdjustLimits(int RCcontrolX);
 void RCcontrolYAutoAdjustLimits(int RCcontrolY);
 void RCActivateState();
