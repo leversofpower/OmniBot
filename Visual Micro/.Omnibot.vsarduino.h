@@ -28,10 +28,12 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void hallAlignWheels();
+void FaceTheLight();
+int getIndexOfMaximumValue(int* array, int size);
 void setCDSPins();
 void setHBridgePins();
 void setEyePins();
-void CDSSensorRead();
 void automationStateSet(int stateType);
 String automationStateVerboseFormat();
 void backPowerButtonPulse();
@@ -39,13 +41,14 @@ void backPowerButtonPulseRateChange();
 void eyesBlink();
 void eyesOpen();
 void eyesClose();
-void automationStateSerialPrint(int displayType);
+void CDSSensorRead();
+void automationStateDisplay(int displayType);
 void LCDdisplayOverride();
 void LCDdisplay(String state);
 void RCReadControlPWM();
 void RCAutomationStateSet();
-void RCcontrolXAutoAdjustLimits(int RCcontrolX);
-void RCcontrolYAutoAdjustLimits(int RCcontrolY);
+void RCcontrolXAutoAdjustLimits(int pinRCcontrollerX);
+void RCcontrolYAutoAdjustLimits(int pinRCcontrollerY);
 void RCActivateState();
 boolean RCcontrolIsMoveForwardRequested();
 boolean RCControlIsMoveBackwardRequested();
@@ -53,10 +56,14 @@ boolean RCcontrolIsMoveRotateLeftRequested();
 boolean RCcontrolIsMoveRotateRightRequested();
 void actionMoveForward();
 void actionMoveBackward();
-void actionMoveRotateLeft();
-void actionMoveRotateRight();
+void actionMoveRotateLeft(int motorPWM);
+void actionMoveRotateLeftWheelForward(int motorPWM);
+void actionMoveRotateRight(int motorPWM);
+void actionMoveRotateRightWheelForward(int motorPWM);
+void actionMoveRotateRightWheelBackward(int motorPWM);
 void actionMoveSteer(int motorPWM, int state);
 void actionStationary();
+void actionStopMovment();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
 
