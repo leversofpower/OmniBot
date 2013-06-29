@@ -62,8 +62,6 @@ void actionMoveRightWheelBackward(int motorPWM);
 void actionMoveSteer(int motorPWM, int state);
 void actionStationary();
 void actionMoveStop();
-void actionMoveLeftWheelStop();
-void actionMoveRightWheelStop();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
 

@@ -23,10 +23,10 @@ const int pinRCcontrollerX = 8;
 //H-Bridge
 const int pinHBridgeLeftForward = 3;
 const int pinHBridgeLeftBackward = 4;
-const int pinHBridgeLeftPWM = 5; //I think this is wired backwards...
+const int pinHBridgeLeftPWM = 5;
 const int pinHBridgeRightForward = 7;
 const int pinHBridgeRightBackward = 6; 
-const int pinHBridgeRightPWM = 2; //I think this is wired backwards...
+const int pinHBridgeRightPWM = 2;
 const int pinLEDEyeRight0 = 32;
 const int pinLEDEyeRight1 = 38; 
 const int pinLEDEyeRight2 = 31;
@@ -204,25 +204,67 @@ bool hallAlignWheels(){
 	Serial.println(wheelHallSensorLeft);
 	Serial.print("wheelHallSensorRight ");
 	Serial.println(wheelHallSensorRight);
-	if (wheelHallSensorLeft == 0)
-	{
-		Serial.println("EXEC wheelHallSensorLeft");
-		actionMoveLeftWheelForward(200);
+
+	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)){
+		Serial.println("00");
+		digitalWrite(pinHBridgeLeftForward, HIGH);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, HIGH);
+
+		analogWrite(pinHBridgeLeftPWM, 150);
+		analogWrite(pinHBridgeRightPWM, 150);
 	}
-	else
-	{
-		actionMoveLeftWheelStop();
+	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)){
+		Serial.println("10");
+		digitalWrite(pinHBridgeLeftForward, LOW);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, HIGH);
+
+		analogWrite(pinHBridgeLeftPWM, 150);
+		analogWrite(pinHBridgeRightPWM, 150);
+	}
+	else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)){
+		Serial.println("01");
+		digitalWrite(pinHBridgeLeftForward, LOW);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, HIGH);
+
+		analogWrite(pinHBridgeLeftPWM, 0);
+		analogWrite(pinHBridgeRightPWM, 150);
+	}
+	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)){
+		Serial.println("11");
+		digitalWrite(pinHBridgeLeftForward, LOW);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, LOW);
+
+		analogWrite(pinHBridgeLeftPWM, 0);
+		analogWrite(pinHBridgeRightPWM, 0);
 	}
 
-	if (wheelHallSensorRight == 0)
-	{
-		Serial.println("EXEC wheelHallSensorRight");
-		actionMoveRightWheelBackward(200);
-	}
-	else
-	{
-		actionMoveRightWheelStop();
-	}
+	//if (wheelHallSensorLeft == 0)
+	//{
+	//	Serial.println("EXEC wheelHallSensorLeft");
+	//	actionMoveLeftWheelForward(180);
+	//}
+	//else
+	//{
+	//	actionMoveLeftWheelStop();
+	//}
+
+	///*if (wheelHallSensorRight == 0)
+	//{
+	//Serial.println("EXEC wheelHallSensorRight");
+	//actionMoveRightWheelBackward(200);
+	//}
+	//else
+	//{
+	//actionMoveRightWheelStop();
+	//}*/
 
 	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0))
 	{ 
@@ -849,15 +891,15 @@ void actionMoveSteer(int motorPWM, int state)
 		{
 			automationStateSet(MoveForwardSteerLeft);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.minimum, 0, 255));
-			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
-			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
+			motorRightCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
+			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
 		}
 		else if (RCcontrolIsMoveRotateRightRequested())
 		{
 			automationStateSet(MoveForwardSteerRight);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.maximum, 0, 255)); 
-			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
-			motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
+			motorRightCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
+			motorLeftCurentPWM = constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
 		}
 	}
 	else if (state = MoveBackward)
@@ -866,15 +908,17 @@ void actionMoveSteer(int motorPWM, int state)
 		{
 			automationStateSet(MoveBackwardSteerLeft);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.minimum, 0, 255));
-			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
-			motorRightCurentPWM = constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
+			motorRightCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
+			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
+
 		}
 		else if (RCcontrolIsMoveRotateRightRequested())
 		{
 			automationStateSet(MoveBackwardSteerRight);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.maximum, 0, 255)); 
-			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
-			motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
+			motorRightCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
+			motorLeftCurentPWM = constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
+
 		}
 	}
 }
@@ -890,18 +934,6 @@ void actionMoveStop(){
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeRightForward, LOW);
 	digitalWrite(pinHBridgeRightBackward, LOW);
-}
-void actionMoveLeftWheelStop(){
-	digitalWrite(pinHBridgeLeftForward, LOW);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-
-	analogWrite(pinHBridgeLeftPWM, 0);
-}
-void actionMoveRightWheelStop(){
-	digitalWrite(pinHBridgeRightForward, LOW);
-	digitalWrite(pinHBridgeRightBackward, LOW);
-
-	analogWrite(pinHBridgeRightPWM, 0);
 }
 
 //Additional sensors
