@@ -28,7 +28,7 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
-void hallAlignWheels();
+bool hallAlignWheels();
 void FaceTheLight();
 int getIndexOfMaximumValue(int* array, int size);
 void setCDSPins();
@@ -47,8 +47,6 @@ void LCDdisplayOverride();
 void LCDdisplay(String state);
 void RCReadControlPWM();
 void RCAutomationStateSet();
-void RCcontrolXAutoAdjustLimits(int pinRCcontrollerX);
-void RCcontrolYAutoAdjustLimits(int pinRCcontrollerY);
 void RCActivateState();
 boolean RCcontrolIsMoveForwardRequested();
 boolean RCControlIsMoveBackwardRequested();
@@ -56,14 +54,16 @@ boolean RCcontrolIsMoveRotateLeftRequested();
 boolean RCcontrolIsMoveRotateRightRequested();
 void actionMoveForward();
 void actionMoveBackward();
-void actionMoveRotateLeft(int motorPWM);
-void actionMoveRotateLeftWheelForward(int motorPWM);
-void actionMoveRotateRight(int motorPWM);
-void actionMoveRotateRightWheelForward(int motorPWM);
-void actionMoveRotateRightWheelBackward(int motorPWM);
+void actionMoveLeftRotate(int motorPWM);
+void actionMoveLeftWheelForward(int motorPWM);
+void actionMoveRightRotate(int motorPWM);
+void actionMoveRightWheelForward(int motorPWM);
+void actionMoveRightWheelBackward(int motorPWM);
 void actionMoveSteer(int motorPWM, int state);
 void actionStationary();
-void actionStopMovment();
+void actionMoveStop();
+void actionMoveLeftWheelStop();
+void actionMoveRightWheelStop();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
 

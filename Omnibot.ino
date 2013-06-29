@@ -27,8 +27,6 @@ const int pinHBridgeLeftPWM = 5; //I think this is wired backwards...
 const int pinHBridgeRightForward = 7;
 const int pinHBridgeRightBackward = 6; 
 const int pinHBridgeRightPWM = 2; //I think this is wired backwards...
-
-// Right Eye
 const int pinLEDEyeRight0 = 32;
 const int pinLEDEyeRight1 = 38; 
 const int pinLEDEyeRight2 = 31;
@@ -56,41 +54,32 @@ const int pinLEDEyeLeft9 = 43;
 const int pinLEDEyeLeft10 = 44;//41
 const int pinLEDEyeLeft11 = 44; 
 const int pinLEDEyeLeft12 = 42;
-//Back Power Button LED
 const int pinLEDBackPowerButton = 10;
-//Plasma Relay
 const int pinRelayPlasmaGlobe = 23;
-//Hall Sensors
 const int pinHallSensorLeftWheel = 40;
 const int pinHallSensorRightWheel = 41;
-
 /* Pin Assignments Analog */
-//Voltage Sensors
 const int pinAnalogVoltageDivider = 0;
-//CDS Sensors
 const int pinAnalogCDSSensor1Frount = 1;
 const int pinAnalogCDSSensor2Back = 2;
 const int pinAnalogCDSSensor3Left = 3;
 const int pinAnalogCDSSensor4Right = 4;
 const int pinAnalogCDSSensor5Top = 5;
-
-
-/* Enumerations */ 
 const int displayVerbose = 1;
-const int serialPrintRefreshRateMilli = 2000;
-unsigned long serialPrintLastUpdateMilli = 0;
-// automation state enumerations
-const int stateUndefined = 0;
-const int stateNoRCSignal = 5;
-const int stateStationary = 10;
-const int stateMoveForward = 20;
-const int stateMoveForwardSteerLeft = 22;
-const int stateMoveForwardSteerRight = 24;
-const int stateMoveBackward = 30;
-const int stateMoveBackwardSteerLeft = 32;
-const int stateMoveBackwardSteerRight = 34;
-const int stateMoveRotateLeft = 40;
-const int stateMoveRotateRight = 50;
+
+enum state {
+	stateUndefined = 0,
+	NoRCSignal = 5,
+	Stationary = 10,
+	MoveForward = 20,
+	MoveForwardSteerLeft = 22,
+	MoveForwardSteerRight = 24,
+	MoveBackward = 30,
+	MoveBackwardSteerLeft = 32,
+	MoveBackwardSteerRight = 34,
+	MoveRotateLeft = 40,
+	MoveRotateRight = 50,
+} stateType;
 
 /* Library Objects */
 //LiquidCrystal_I2C lcd(0x27,16,2); OLD LCD
@@ -100,23 +89,18 @@ Timer timerEyeBlink;
 
 /* Globals */
 unsigned long UptimeMillis;
-int RCcontrolYPWM = 0;
-int RCcontrolYPWMTop = 1973;
-int RCcontrolYPWMMiddle = 1540;
-int RCcontrolYPWMBottom = 1061;
-int RCcontrolPWMYBuffer = 50;
-int RCcontrolPWMXBuffer = 50;
-int RCcontrolXPWM = 0;
-int RCcontrolXPWMTop = 1972;
-int RCcontrolXPWMMiddle = 1510;
-int RCcontrolXPWMBottom = 1059; 
+const int serialPrintRefreshRateMilli = 2000;
+unsigned long serialPrintLastUpdateMilli = 0;
+// automation state
+int automationCurrentState = 0;
+unsigned long automationCurrentStateElapsedMillis = 0;
+unsigned long automationStateLastMillisMeasure = 0;
 int motorLeftCurentPWM = 0;
 int motorRightCurentPWM = 0;
-int motorMinimumPWMforActuation = 95;
+int motorMinimumPWMforActuation = 95; //Is this actually correct?
 float motorBatteryVoltageNow = 0.0;
 float motorBatteryVoltageHigh = 0.0;
 float motorBatteryVoltageLow = 12.0;
-
 // Hall Sensors
 int wheelHallSensorLeft = 0;
 int wheelHallSensorRight = 0;
@@ -124,38 +108,30 @@ int wheelRotationsLeft = 0;
 int WheelRotationsRight = 0;
 int wheelRotationsLeftState = 0;
 int wheelRotationsRightState = 0;
-
 //LCD Screen
 int LCDPageNumber = 0;
-
-// automation state
-int automationCurrentState = 0;
-unsigned long automationCurrentStateElapsedMillis = 0;
-unsigned long automationStateLastMillisMeasure = 0;
-
 // Angel eye power button 
 int backPowerButtonPWM = 0;
 int backPowerButtonPulseRate = 70;
 int backPowerButtonPulseSteps[] = {0,1,2,5,10,255,20,30,40,50,60,70,80,90,100,255,100,90,80,70,60,50,40,30,20,10,0};
 int backPowerButtonPulsePosition = 0;
 unsigned long backPowerButtonLastPulse = 0;
-
-// CDS Photocells
-int CDSSensor1FrountValue = 0;
-int CDSSensor2BackValue = 0;
-int CDSSensor3LeftValue = 0;
-int CDSSensor4RightValue = 0;
-int CDSSensor5TopValue = 0;
-
-//Not fully implemented yet
-int RCcontrolYPWMRangeSpread = 0;
-int RCcontrolYPWMTopDynamic = RCcontrolYPWMBottom;
-int RCcontrolYPWMMiddleDynamic = 0;
-int RCcontrolYPWMBottomDynamic = RCcontrolYPWMTop;
-int RCcontrolXPWMRangeSpread = 0;
-int RCcontrolXPWMTopDynamic = RCcontrolXPWMBottom;
-int RCcontrolXPWMMiddleDynamic = 0;
-int RCcontrolXPWMBottomDynamic = RCcontrolXPWMTop;
+struct RCcontrollerPWM
+{
+	int current;
+	int maximum;
+	int resting;
+	int minimum;
+	int tolerence;
+} RCx,RCy;
+struct photoCell
+{
+	int frount;
+	int back;
+	int left;
+	int right;
+	int top;
+} photoCellValue;
 
 // Automated Behavior
 unsigned long automatedBehaviorLastUpdateMilli = 0;
@@ -164,6 +140,19 @@ int automatedBehaviorRefreshRateMilli = 500;
 
 void setup() {
 	Serial.begin(9600);
+
+	RCx.current = 0;
+	RCx.maximum = 1973;
+	RCx.resting = 1540;
+	RCx.minimum = 1061;
+	RCx.tolerence = 50;
+
+	RCy.current = 0;
+	RCy.maximum = 1972;
+	RCy.resting = 1510;
+	RCy.minimum = 1059;
+	RCy.tolerence = 50;
+
 	lcd.init();
 	lcd.backlight();
 
@@ -185,13 +174,12 @@ void setup() {
 
 	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
 
-	hallAlignWheels();
 }
 void loop() {
 	UptimeMillis = millis();
 	//RC Controller
-	//RCReadControlPWM();
-	//RCAutomationStateSet();
+	RCReadControlPWM();
+	RCAutomationStateSet();
 
 	//Eyes
 	timerEyeBlink.update();
@@ -203,49 +191,75 @@ void loop() {
 	//CDS Monitoring
 	CDSSensorRead();
 
-	//FaceTheLight();
+	//FaceTheLight(); //WIP
 
 	//Battery Monitoring
 	motorBatteryAnalogVoltageDividerRead();
 	//LCD SCreen
 	automationStateDisplay(displayVerbose);
 }
-void hallAlignWheels(){
-	do
+bool hallAlignWheels(){
+	wheelHallSensorsRead();
+	Serial.print("wheelHallSensorLeft ");
+	Serial.println(wheelHallSensorLeft);
+	Serial.print("wheelHallSensorRight ");
+	Serial.println(wheelHallSensorRight);
+	if (wheelHallSensorLeft == 0)
 	{
-		actionMoveRotateLeftWheelForward(120);
-		actionMoveRotateRightWheelBackward(120);
-		wheelHallSensorsRead();
-	} while ((wheelHallSensorRight == 0) && (wheelHallSensorLeft == 0));
-	actionStopMovment();
+		Serial.println("EXEC wheelHallSensorLeft");
+		actionMoveLeftWheelForward(200);
+	}
+	else
+	{
+		actionMoveLeftWheelStop();
+	}
+
+	if (wheelHallSensorRight == 0)
+	{
+		Serial.println("EXEC wheelHallSensorRight");
+		actionMoveRightWheelBackward(200);
+	}
+	else
+	{
+		actionMoveRightWheelStop();
+	}
+
+	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0))
+	{ 
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 /* Behaviors */
 // Rotate twords light
-void FaceTheLight(){
+void FaceTheLight(){ //WIP
 	//if(UptimeMillis - automatedBehaviorLastUpdateMilli > automatedBehaviorRefreshRateMilli) {
 	//automatedBehaviorLastUpdateMilli = UptimeMillis; 
 
 	//if (CDSSensor3LeftValue > CDSSensor4RightValue){
 	//	//Rotate Left
-	//	actionMoveRotateLeft(130);
+	//	actionMoveLeftRotate(130);
 	//}
 	//else if (CDSSensor4RightValue > CDSSensor3LeftValue)  {
 	//	//Rotate Right
-	//	actionMoveRotateRight(130);
+	//	actionMoveRightRotate(130);
 	//}
 	//else{
-	//	actionStopMovment();
+	//	actionMoveStop();
 	//}
 
 	//store all four values in an array
-	int CDSValues[3];
-	CDSValues[0] = CDSSensor1FrountValue;
-	CDSValues[1] = CDSSensor2BackValue;
-	CDSValues[2] = CDSSensor3LeftValue;
-	CDSValues[3] = CDSSensor4RightValue;
+	int sensor[3];
+	sensor[0] = photoCellValue.frount;
+	sensor[1] = photoCellValue.back;
+	sensor[2] = photoCellValue.left;
+	sensor[3] = photoCellValue.right;
 	// Read all four values
 	// Find the highest value of the four
-	int index = getIndexOfMaximumValue(CDSValues, 4);
+	int index = getIndexOfMaximumValue(sensor, 4);
 	Serial.println(index);
 	// if frount then do nothing, else start turning
 	if (index != 0){
@@ -276,7 +290,6 @@ int getIndexOfMaximumValue(int* array, int size){
 	}
 	return maxIndex;
 }
-
 
 //Setup Methods
 void setCDSPins(){
@@ -349,26 +362,26 @@ String automationStateVerboseFormat(){
 	switch (automationCurrentState){
 	case stateUndefined:
 		return("Undefined");
-	case stateNoRCSignal:
+	case NoRCSignal:
 		return("No RC Signal");
-	case stateStationary:
-		return("Stationary X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveForward:
-		return("Forward X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveForwardSteerLeft:
-		return("Forward Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveForwardSteerRight:
-		return("Forward Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveBackward:
-		return("Reverse X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveBackwardSteerLeft:
-		return("Reverse Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveBackwardSteerRight:
-		return("Reverse Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveRotateLeft:
-		return("Rotate Left X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
-	case stateMoveRotateRight:
-		return("Rotate Right X:" + String(RCcontrolXPWM) + ", Y:" + String(RCcontrolYPWM));
+	case Stationary:
+		return("Stationary X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveForward:
+		return("Forward X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveForwardSteerLeft:
+		return("Forward Left X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveForwardSteerRight:
+		return("Forward Right X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveBackward:
+		return("Reverse X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveBackwardSteerLeft:
+		return("Reverse Left X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveBackwardSteerRight:
+		return("Reverse Right X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveRotateLeft:
+		return("Rotate Left X:" + String(RCx.current) + ", Y:" + String(RCy.current));
+	case MoveRotateRight:
+		return("Rotate Right X:" + String(RCx.current) + ", Y:" + String(RCy.current));
 	}
 }
 
@@ -387,9 +400,9 @@ void backPowerButtonPulse(){
 	}
 }
 void backPowerButtonPulseRateChange(){
-	if ((automationCurrentState == stateMoveForward) || (automationCurrentState == stateMoveForwardSteerLeft) || (automationCurrentState == stateMoveForwardSteerRight)
-		|| (automationCurrentState == stateMoveBackward) || (automationCurrentState == stateMoveBackwardSteerLeft) || (automationCurrentState == stateMoveBackwardSteerRight)
-		|| (automationCurrentState == stateMoveRotateLeft) || (automationCurrentState == stateMoveRotateRight)){
+	if ((automationCurrentState == MoveForward) || (automationCurrentState == MoveForwardSteerLeft) || (automationCurrentState == MoveForwardSteerRight)
+		|| (automationCurrentState == MoveBackward) || (automationCurrentState == MoveBackwardSteerLeft) || (automationCurrentState == MoveBackwardSteerRight)
+		|| (automationCurrentState == MoveRotateLeft) || (automationCurrentState == MoveRotateRight)){
 			//check time spent moving to determin speed up
 			if ((automationCurrentStateElapsedMillis > 2000) && (automationCurrentStateElapsedMillis < 5000)){
 				backPowerButtonPulseRate = 50; 
@@ -401,7 +414,7 @@ void backPowerButtonPulseRateChange(){
 				backPowerButtonPulseRate = 5; // exhausted
 			}
 	}
-	else if ((automationCurrentState == stateStationary) ||  (automationCurrentState == stateNoRCSignal)){
+	else if ((automationCurrentState == Stationary) ||  (automationCurrentState == NoRCSignal)){
 		//Check time spent resting to cool down
 		if ((automationCurrentStateElapsedMillis > 2000) && (automationCurrentStateElapsedMillis < 5000)){
 			backPowerButtonPulseRate = 50; 
@@ -548,11 +561,11 @@ void eyesClose(){
 
 //Photo Sensor Array
 void CDSSensorRead(){
-	CDSSensor1FrountValue = analogRead(pinAnalogCDSSensor1Frount);
-	CDSSensor2BackValue = analogRead(pinAnalogCDSSensor2Back);
-	CDSSensor3LeftValue = analogRead(pinAnalogCDSSensor3Left);
-	CDSSensor4RightValue = analogRead(pinAnalogCDSSensor4Right);
-	CDSSensor5TopValue = analogRead(pinAnalogCDSSensor5Top);
+	photoCellValue.frount = analogRead(pinAnalogCDSSensor1Frount);
+	photoCellValue.back = analogRead(pinAnalogCDSSensor2Back);
+	photoCellValue.left = analogRead(pinAnalogCDSSensor3Left);
+	photoCellValue.right = analogRead(pinAnalogCDSSensor4Right);
+	photoCellValue.top = analogRead(pinAnalogCDSSensor5Top);
 }
 
 //LCD output
@@ -572,19 +585,19 @@ void LCDdisplayOverride(){
 
 	lcd.setCursor(0,1);
 	lcd.print("Top  ");
-	lcd.print(CDSSensor5TopValue);
+	lcd.print(photoCellValue.top);
 
 	lcd.setCursor(0,2);
 	lcd.print("Frnt ");
-	lcd.print(CDSSensor1FrountValue);
+	lcd.print(photoCellValue.frount);
 	lcd.print(" Back  ");
-	lcd.print(CDSSensor2BackValue);
+	lcd.print(photoCellValue.back);
 
 	lcd.setCursor(0,3);
 	lcd.print("Left ");
-	lcd.print(CDSSensor3LeftValue);
+	lcd.print(photoCellValue.left);
 	lcd.print(" Right ");
-	lcd.print(CDSSensor4RightValue);
+	lcd.print(photoCellValue.right);
 }
 void LCDdisplay(String state){
 	lcd.clear();
@@ -633,19 +646,19 @@ void LCDdisplay(String state){
 
 		lcd.setCursor(0,1);
 		lcd.print("Top  ");
-		lcd.print(CDSSensor5TopValue);
+		lcd.print(photoCellValue.top);
 
 		lcd.setCursor(0,2);
 		lcd.print("Frnt ");
-		lcd.print(CDSSensor1FrountValue);
+		lcd.print(photoCellValue.frount);
 		lcd.print(" Back  ");
-		lcd.print(CDSSensor2BackValue);
+		lcd.print(photoCellValue.back);
 
 		lcd.setCursor(0,3);
 		lcd.print("Left ");
-		lcd.print(CDSSensor3LeftValue);
+		lcd.print(photoCellValue.left);
 		lcd.print(" Right ");
-		lcd.print(CDSSensor4RightValue);
+		lcd.print(photoCellValue.right);
 		break;
 
 	default://Last page	
@@ -654,21 +667,21 @@ void LCDdisplay(String state){
 
 		lcd.setCursor(0,1);
 		lcd.print("PMM X/Y ");
-		lcd.print(RCcontrolXPWM);
+		lcd.print(RCx.current);
 		lcd.print("/");
-		lcd.print(RCcontrolYPWM);
+		lcd.print(RCy.current);
 
 		lcd.setCursor(0,2);
 		lcd.print("Y H/L ");
-		lcd.print(RCcontrolYPWMTop);
+		lcd.print(RCy.maximum);
 		lcd.print("/");
-		lcd.print(RCcontrolYPWMBottom);
+		lcd.print(RCy.minimum);
 
 		lcd.setCursor(0,3);
 		lcd.print("X H/L ");
-		lcd.print(RCcontrolXPWMTop);
+		lcd.print(RCx.maximum);
 		lcd.print("/");
-		lcd.print(RCcontrolXPWMBottom);
+		lcd.print(RCx.minimum);
 
 		LCDPageNumber = 0; 
 		break;
@@ -679,54 +692,29 @@ void LCDdisplay(String state){
 //Read RC controller
 void RCReadControlPWM()
 {
-	RCcontrolXPWM = pulseIn(pinRCcontrollerX, HIGH, 20000);
-	if (RCcontrolXPWM != 0){
-		RCcontrolXAutoAdjustLimits(RCcontrolXPWM);
-		RCcontrolXPWM = RCcontrolXPWM == 0 ? RCcontrolXPWMMiddle : RCcontrolXPWM;
-		RCcontrolXPWM = constrain(RCcontrolXPWM, RCcontrolXPWMBottom, RCcontrolXPWMTop);
+	RCx.current = pulseIn(pinRCcontrollerX, HIGH, 20000);
+	if (RCx.current != 0){
+		RCx.current = RCx.current == 0 ? RCx.resting : RCx.current;
+		RCx.current = constrain(RCx.current, RCx.minimum, RCx.maximum);
 	}
 
-	RCcontrolYPWM = pulseIn(pinRCcontrollerY, HIGH, 20000);
-	if (RCcontrolYPWM != 0){
-		RCcontrolYAutoAdjustLimits(RCcontrolYPWM);
-		RCcontrolYPWM = RCcontrolYPWM == 0 ? RCcontrolYPWMMiddle : RCcontrolYPWM;
-		RCcontrolYPWM = constrain(RCcontrolYPWM, RCcontrolYPWMBottom, RCcontrolYPWMTop);
+	RCy.current = pulseIn(pinRCcontrollerY, HIGH, 20000);
+	if (RCy.current != 0){
+		RCy.current = RCy.current == 0 ? RCy.resting : RCy.current;
+		RCy.current = constrain(RCy.current, RCy.minimum, RCy.maximum);
 	}
 }
 void RCAutomationStateSet(){
-	if ((RCcontrolYPWM > 0) && (RCcontrolXPWM > 0))
+	if ((RCy.current > 0) && (RCx.current > 0))
 	{
-		RCActivateState();
+		RCActivateState(); //this is the normal line 
+		//hallAlignWheels(); //Testing
 	}
 	else
 	{
-		actionStopMovment();
-		automationStateSet(stateNoRCSignal);
+		actionMoveStop();
+		automationStateSet(NoRCSignal);
 	}
-}
-void RCcontrolXAutoAdjustLimits(int pinRCcontrollerX){
-	RCcontrolXPWMTopDynamic = max(RCcontrolXPWM, RCcontrolXPWMTopDynamic);
-	RCcontrolXPWMBottomDynamic = min(RCcontrolXPWM, RCcontrolXPWMBottomDynamic);
-
-	if (RCcontrolXPWMTop < RCcontrolXPWMTopDynamic){
-	}
-	if (RCcontrolXPWMBottom > RCcontrolXPWMBottomDynamic){
-	}
-
-	RCcontrolXPWMRangeSpread = RCcontrolXPWMTop - RCcontrolXPWMBottom;
-	RCcontrolXPWMMiddleDynamic = (int)(RCcontrolXPWMRangeSpread * .5) + RCcontrolXPWMBottom;
-}
-void RCcontrolYAutoAdjustLimits(int pinRCcontrollerY){
-	RCcontrolYPWMTopDynamic = max(RCcontrolYPWM, RCcontrolYPWMTopDynamic);
-	RCcontrolYPWMBottomDynamic = min(RCcontrolYPWM, RCcontrolYPWMBottomDynamic);
-
-	if (RCcontrolYPWMTop < RCcontrolYPWMTopDynamic){
-	}
-	if (RCcontrolYPWMBottom > RCcontrolYPWMBottomDynamic){
-	}
-
-	RCcontrolYPWMRangeSpread = RCcontrolYPWMTop - RCcontrolYPWMBottom;
-	RCcontrolYPWMMiddleDynamic = (int)(RCcontrolYPWMRangeSpread * .5) + RCcontrolYPWMBottom;
 }
 void RCActivateState(){
 	if(RCcontrolIsMoveForwardRequested()) {
@@ -736,12 +724,12 @@ void RCActivateState(){
 		actionMoveBackward();
 	} 
 	else if(RCcontrolIsMoveRotateLeftRequested()){
-		int mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
-		actionMoveRotateLeft(mtrTurnPWM);
+		int mtrTurnPWM = abs(map(RCx.current, RCx.resting, RCx.maximum, 0, 255)); 
+		actionMoveLeftRotate(mtrTurnPWM);
 	}
 	else if(RCcontrolIsMoveRotateRightRequested()){
-		int mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
-		actionMoveRotateRight(mtrTurnPWM);
+		int mtrTurnPWM = abs(map(RCx.current, RCx.resting, RCx.minimum, 0, 255));
+		actionMoveRightRotate(mtrTurnPWM);
 	}
 	else{
 		actionStationary();
@@ -751,74 +739,56 @@ void RCActivateState(){
 // Movement trigger tolerances
 boolean RCcontrolIsMoveForwardRequested()
 {
-	return RCcontrolYPWM < (RCcontrolYPWMMiddle - RCcontrolPWMYBuffer);
+	return RCy.current < (RCy.resting - RCy.tolerence);
 }
 boolean RCControlIsMoveBackwardRequested()
 {
-	return RCcontrolYPWM > (RCcontrolYPWMMiddle + RCcontrolPWMYBuffer); 
+	return RCy.current > (RCy.resting  + RCy.tolerence); 
 }
 boolean RCcontrolIsMoveRotateLeftRequested(){
-	return RCcontrolXPWM < (RCcontrolXPWMMiddle - RCcontrolPWMXBuffer);  
+	return RCx.current < (RCx.resting  - RCx.tolerence);  
 }
 boolean RCcontrolIsMoveRotateRightRequested(){
-	return RCcontrolXPWM > (RCcontrolXPWMMiddle + RCcontrolPWMXBuffer);
+	return RCx.current > (RCx.resting  + RCx.tolerence);
 }
 
 // Movement PWM settings and actuation 
 void actionMoveForward()
 {
-	automationStateSet(stateMoveForward);
+	automationStateSet(MoveForward);
 	/*Why negative numbers? need abs()*/
-	int motorPWM = abs(map(RCcontrolYPWM, RCcontrolYPWMMiddle, RCcontrolYPWMTop, 0, 255));
+	int motorPWM = abs(map(RCy.current, RCy.resting , RCy.maximum, 0, 255));
 	motorPWM = constrain(motorPWM, motorMinimumPWMforActuation, 255);
-	actionMoveSteer(motorPWM, stateMoveForward);
 
-	digitalWrite(pinHBridgeLeftForward, LOW);
-	digitalWrite(pinHBridgeLeftBackward, HIGH);
-	digitalWrite(pinHBridgeRightForward, LOW);
-	digitalWrite(pinHBridgeRightBackward, HIGH);
+	actionMoveSteer(motorPWM, MoveForward);
+
+	digitalWrite(pinHBridgeLeftForward, HIGH);
+	digitalWrite(pinHBridgeLeftBackward, LOW);
+	digitalWrite(pinHBridgeRightForward, HIGH);
+	digitalWrite(pinHBridgeRightBackward, LOW);
 
 	analogWrite(pinHBridgeLeftPWM, motorLeftCurentPWM);
 	analogWrite(pinHBridgeRightPWM, motorRightCurentPWM);
 }
 void actionMoveBackward()
 {
-	automationStateSet(stateMoveBackward);
+	automationStateSet(MoveBackward);
 	/*Why negative numbers? need abs()*/
-	int motorPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255));
+	int motorPWM = abs(map(RCy.current, RCy.resting , RCy.maximum, 0, 255));
 	motorPWM = constrain(motorPWM, motorMinimumPWMforActuation, 255);
-	actionMoveSteer(motorPWM, stateMoveForward);
 
-	digitalWrite(pinHBridgeLeftForward, HIGH);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-	digitalWrite(pinHBridgeRightForward, HIGH);
-	digitalWrite(pinHBridgeRightBackward, LOW);
+	actionMoveSteer(motorPWM, MoveBackward);
+
+	digitalWrite(pinHBridgeLeftForward, LOW);
+	digitalWrite(pinHBridgeLeftBackward, HIGH);
+	digitalWrite(pinHBridgeRightForward, LOW);
+	digitalWrite(pinHBridgeRightBackward, HIGH);
 
 	analogWrite(pinHBridgeLeftPWM, motorLeftCurentPWM);
 	analogWrite(pinHBridgeRightPWM, motorRightCurentPWM);
 }
-void actionMoveRotateLeft(int motorPWM){
-	automationStateSet(stateMoveRotateLeft);
-
-	digitalWrite(pinHBridgeLeftForward, HIGH);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-	digitalWrite(pinHBridgeRightForward, LOW);
-	digitalWrite(pinHBridgeRightBackward, HIGH);
-
-	analogWrite(pinHBridgeLeftPWM, motorPWM);
-	analogWrite(pinHBridgeRightPWM, motorPWM);
-}
-void actionMoveRotateLeftWheelForward(int motorPWM){
-	digitalWrite(pinHBridgeLeftForward, HIGH);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-	digitalWrite(pinHBridgeRightForward, LOW);
-	digitalWrite(pinHBridgeRightBackward, LOW);
-
-	analogWrite(pinHBridgeLeftPWM, motorPWM);
-	analogWrite(pinHBridgeRightPWM, motorPWM);
-}
-void actionMoveRotateRight(int motorPWM){
-	automationStateSet(stateMoveRotateRight);
+void actionMoveLeftRotate(int motorPWM){
+	automationStateSet(MoveRotateLeft);
 
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeLeftBackward, HIGH);
@@ -828,7 +798,27 @@ void actionMoveRotateRight(int motorPWM){
 	analogWrite(pinHBridgeLeftPWM, motorPWM);
 	analogWrite(pinHBridgeRightPWM, motorPWM);
 }
-void actionMoveRotateRightWheelForward(int motorPWM){
+void actionMoveLeftWheelForward(int motorPWM){
+	digitalWrite(pinHBridgeLeftForward, HIGH);
+	digitalWrite(pinHBridgeLeftBackward, LOW);
+	digitalWrite(pinHBridgeRightForward, LOW);
+	digitalWrite(pinHBridgeRightBackward, LOW);
+
+	analogWrite(pinHBridgeLeftPWM, motorPWM);
+	analogWrite(pinHBridgeRightPWM, motorPWM);
+}
+void actionMoveRightRotate(int motorPWM){
+	automationStateSet(MoveRotateRight);
+
+	digitalWrite(pinHBridgeLeftForward, HIGH);
+	digitalWrite(pinHBridgeLeftBackward, LOW);
+	digitalWrite(pinHBridgeRightForward, LOW);
+	digitalWrite(pinHBridgeRightBackward, HIGH);
+
+	analogWrite(pinHBridgeLeftPWM, motorPWM);
+	analogWrite(pinHBridgeRightPWM, motorPWM);
+}
+void actionMoveRightWheelForward(int motorPWM){
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeLeftBackward, LOW);
 	digitalWrite(pinHBridgeRightForward, HIGH);
@@ -837,7 +827,7 @@ void actionMoveRotateRightWheelForward(int motorPWM){
 	analogWrite(pinHBridgeLeftPWM, motorPWM);
 	analogWrite(pinHBridgeRightPWM, motorPWM);
 }
-void actionMoveRotateRightWheelBackward(int motorPWM){
+void actionMoveRightWheelBackward(int motorPWM){
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeLeftBackward, LOW);
 	digitalWrite(pinHBridgeRightForward, LOW);
@@ -853,36 +843,36 @@ void actionMoveSteer(int motorPWM, int state)
 	motorRightCurentPWM = motorPWM;
 	int mtrTurnPWM = 0;
 
-	if (state == stateMoveForward)
+	if (state == MoveForward)
 	{
 		if (RCcontrolIsMoveRotateLeftRequested())
 		{
-			automationStateSet(stateMoveForwardSteerLeft);
-			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
+			automationStateSet(MoveForwardSteerLeft);
+			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.minimum, 0, 255));
 			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
 			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
 		}
 		else if (RCcontrolIsMoveRotateRightRequested())
 		{
-			automationStateSet(stateMoveForwardSteerRight);
-			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
+			automationStateSet(MoveForwardSteerRight);
+			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.maximum, 0, 255)); 
 			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
 			motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
 		}
 	}
-	else if (state = stateMoveBackward)
+	else if (state = MoveBackward)
 	{
 		if (RCcontrolIsMoveRotateLeftRequested())
 		{
-			automationStateSet(stateMoveBackwardSteerLeft);
-			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMBottom, 0, 255));
+			automationStateSet(MoveBackwardSteerLeft);
+			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.minimum, 0, 255));
 			motorLeftCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
-			motorRightCurentPWM =  constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
+			motorRightCurentPWM = constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
 		}
 		else if (RCcontrolIsMoveRotateRightRequested())
 		{
-			automationStateSet(stateMoveBackwardSteerRight);
-			mtrTurnPWM = abs(map(RCcontrolXPWM, RCcontrolXPWMMiddle, RCcontrolXPWMTop, 0, 255)); 
+			automationStateSet(MoveBackwardSteerRight);
+			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.maximum, 0, 255)); 
 			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
 			motorRightCurentPWM =  constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
 		}
@@ -890,16 +880,28 @@ void actionMoveSteer(int motorPWM, int state)
 }
 void actionStationary()
 {
-	automationStateSet(stateStationary);
-	actionStopMovment();
+	automationStateSet(Stationary);
+	actionMoveStop();
 }
-void actionStopMovment(){
+void actionMoveStop(){
 	motorLeftCurentPWM = 0;
 	motorRightCurentPWM = 0;
 	digitalWrite(pinHBridgeLeftBackward, LOW);
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeRightForward, LOW);
 	digitalWrite(pinHBridgeRightBackward, LOW);
+}
+void actionMoveLeftWheelStop(){
+	digitalWrite(pinHBridgeLeftForward, LOW);
+	digitalWrite(pinHBridgeLeftBackward, LOW);
+
+	analogWrite(pinHBridgeLeftPWM, 0);
+}
+void actionMoveRightWheelStop(){
+	digitalWrite(pinHBridgeRightForward, LOW);
+	digitalWrite(pinHBridgeRightBackward, LOW);
+
+	analogWrite(pinHBridgeRightPWM, 0);
 }
 
 //Additional sensors
