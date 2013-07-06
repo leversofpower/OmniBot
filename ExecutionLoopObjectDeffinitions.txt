@@ -1,0 +1,53 @@
+Main Loop Execution Sequence
+check all observers
+observer generates action que item
+observer does not generate action item
+observer generates additional observer item
+check all actions
+action que does not execute action
+action que executes action
+return to main
+
+observers
+have wait time between observations
+number of times to execute
+can add/remove other observers
+can add/remove actions
+have exposed properties
+
+actions
+has int priority
+has int identifier
+can set initial/setup actions
+do not need an observer
+
+Action Object
+[properties]
+int actionID
+int priority
+unsigned long executionWait
+unsigned long executedDuration
+unsigned long executedLast
+long executedTimes
+long executedTimeRemaing
+int observerID
+bool isInfitie
+bool isExecuting
+string callback
+[methods]
+
+Observer object
+[properties]
+int observerID
+int priority
+unsigned long executionWait
+unsigned long executedDuration
+unsigned long executedLast
+long executedTimes
+long executedTimeRemaing
+int actionID
+bool isInfitie
+bool isExecuting
+string callback
+[methods]
+

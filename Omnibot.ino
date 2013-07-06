@@ -1,8 +1,9 @@
 /*
 NEEDS FIXED:
+NEEDS MEASURED:
+One hall check rotation angle
+one hall check on both wheels distance forward and backward
 TODO:
-Fix Right rotation PWM clipping on the extreme right PWM scale
-rotate one pass of hall sensor to check rotation angle: approx 90 degrees
 Break Blinking into two seperate timers. One for lid down and one for lid up.
 Create array for the states. Add time spent in state for each state. Add last activate time of day.
 State Based LCD Display:
@@ -101,13 +102,22 @@ int motorMinimumPWMforActuation = 95; //Is this actually correct?
 float motorBatteryVoltageNow = 0.0;
 float motorBatteryVoltageHigh = 0.0;
 float motorBatteryVoltageLow = 12.0;
-// Hall Sensors
+
+
+// Hall Sensors - ned to make a struct out of this
 int wheelHallSensorLeft = 0;
 int wheelHallSensorRight = 0;
 int wheelRotationsLeft = 0;
 int WheelRotationsRight = 0;
 int wheelRotationsLeftState = 0;
 int wheelRotationsRightState = 0;
+
+int commandStep = 0; // sequencing hall movement commands
+int hallRotaionCheckRateMilli = 2000; //millisecond time used to wait for next hall detection
+unsigned long hallRotaionLastCheckMilli = 0; // Last check time
+int hallMilliPassedCheck = 0; //number of completed checks using hallRotaionCheckRateMilli timer
+int hallMovementChecks = 0; //Used to hold automated movement return counts
+
 //LCD Screen
 int LCDPageNumber = 0;
 // Angel eye power button 
@@ -173,8 +183,8 @@ void setup() {
 	//digitalWrite(pinRelayPlasmaGlobe, LOW);
 
 	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
-
 }
+
 void loop() {
 	UptimeMillis = millis();
 	//RC Controller
@@ -198,83 +208,7 @@ void loop() {
 	//LCD SCreen
 	automationStateDisplay(displayVerbose);
 }
-bool hallAlignWheels(){
-	wheelHallSensorsRead();
-	Serial.print("wheelHallSensorLeft ");
-	Serial.println(wheelHallSensorLeft);
-	Serial.print("wheelHallSensorRight ");
-	Serial.println(wheelHallSensorRight);
 
-	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)){
-		Serial.println("00");
-		digitalWrite(pinHBridgeLeftForward, HIGH);
-		digitalWrite(pinHBridgeLeftBackward, LOW);
-		digitalWrite(pinHBridgeRightForward, LOW);
-		digitalWrite(pinHBridgeRightBackward, HIGH);
-
-		analogWrite(pinHBridgeLeftPWM, 150);
-		analogWrite(pinHBridgeRightPWM, 150);
-	}
-	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)){
-		Serial.println("10");
-		digitalWrite(pinHBridgeLeftForward, LOW);
-		digitalWrite(pinHBridgeLeftBackward, LOW);
-		digitalWrite(pinHBridgeRightForward, LOW);
-		digitalWrite(pinHBridgeRightBackward, HIGH);
-
-		analogWrite(pinHBridgeLeftPWM, 150);
-		analogWrite(pinHBridgeRightPWM, 150);
-	}
-	else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)){
-		Serial.println("01");
-		digitalWrite(pinHBridgeLeftForward, LOW);
-		digitalWrite(pinHBridgeLeftBackward, LOW);
-		digitalWrite(pinHBridgeRightForward, LOW);
-		digitalWrite(pinHBridgeRightBackward, HIGH);
-
-		analogWrite(pinHBridgeLeftPWM, 0);
-		analogWrite(pinHBridgeRightPWM, 150);
-	}
-	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)){
-		Serial.println("11");
-		digitalWrite(pinHBridgeLeftForward, LOW);
-		digitalWrite(pinHBridgeLeftBackward, LOW);
-		digitalWrite(pinHBridgeRightForward, LOW);
-		digitalWrite(pinHBridgeRightBackward, LOW);
-
-		analogWrite(pinHBridgeLeftPWM, 0);
-		analogWrite(pinHBridgeRightPWM, 0);
-	}
-
-	//if (wheelHallSensorLeft == 0)
-	//{
-	//	Serial.println("EXEC wheelHallSensorLeft");
-	//	actionMoveLeftWheelForward(180);
-	//}
-	//else
-	//{
-	//	actionMoveLeftWheelStop();
-	//}
-
-	///*if (wheelHallSensorRight == 0)
-	//{
-	//Serial.println("EXEC wheelHallSensorRight");
-	//actionMoveRightWheelBackward(200);
-	//}
-	//else
-	//{
-	//actionMoveRightWheelStop();
-	//}*/
-
-	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0))
-	{ 
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
 /* Behaviors */
 // Rotate twords light
 void FaceTheLight(){ //WIP
@@ -749,11 +683,28 @@ void RCReadControlPWM()
 void RCAutomationStateSet(){
 	if ((RCy.current > 0) && (RCx.current > 0))
 	{
-		RCActivateState(); //this is the normal line 
-		//hallAlignWheels(); //Testing
+		RCActivateState();
+		//When RC controller is turned on begin testing simple movement routines
+		//hallMovementChecks = 2;
+
+		if ((hallAlignWheels() == true) && (commandStep == 0)){
+			Serial.println("Hall Wheels Aligned");
+			commandStep = 1;
+			delay(5000);
+		}
+
+		if (commandStep == 1){
+			hallMovementChecks = 2;
+			if (hallRotateRight() == true){
+				commandStep = 2;
+				Serial.println("Command step 2 completed");
+				hallMilliPassedCheck = 0;
+			}
+		}
 	}
 	else
 	{
+		commandStep = 0;
 		actionMoveStop();
 		automationStateSet(NoRCSignal);
 	}
@@ -840,15 +791,6 @@ void actionMoveLeftRotate(int motorPWM){
 	analogWrite(pinHBridgeLeftPWM, motorPWM);
 	analogWrite(pinHBridgeRightPWM, motorPWM);
 }
-void actionMoveLeftWheelForward(int motorPWM){
-	digitalWrite(pinHBridgeLeftForward, HIGH);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-	digitalWrite(pinHBridgeRightForward, LOW);
-	digitalWrite(pinHBridgeRightBackward, LOW);
-
-	analogWrite(pinHBridgeLeftPWM, motorPWM);
-	analogWrite(pinHBridgeRightPWM, motorPWM);
-}
 void actionMoveRightRotate(int motorPWM){
 	automationStateSet(MoveRotateRight);
 
@@ -860,25 +802,6 @@ void actionMoveRightRotate(int motorPWM){
 	analogWrite(pinHBridgeLeftPWM, motorPWM);
 	analogWrite(pinHBridgeRightPWM, motorPWM);
 }
-void actionMoveRightWheelForward(int motorPWM){
-	digitalWrite(pinHBridgeLeftForward, LOW);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-	digitalWrite(pinHBridgeRightForward, HIGH);
-	digitalWrite(pinHBridgeRightBackward, LOW);
-
-	analogWrite(pinHBridgeLeftPWM, motorPWM);
-	analogWrite(pinHBridgeRightPWM, motorPWM);
-}
-void actionMoveRightWheelBackward(int motorPWM){
-	digitalWrite(pinHBridgeLeftForward, LOW);
-	digitalWrite(pinHBridgeLeftBackward, LOW);
-	digitalWrite(pinHBridgeRightForward, LOW);
-	digitalWrite(pinHBridgeRightBackward, HIGH);
-
-	analogWrite(pinHBridgeLeftPWM, motorPWM);
-	analogWrite(pinHBridgeRightPWM, motorPWM);
-}
-
 void actionMoveSteer(int motorPWM, int state)
 {
 	motorLeftCurentPWM = motorPWM;
@@ -934,6 +857,121 @@ void actionMoveStop(){
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeRightForward, LOW);
 	digitalWrite(pinHBridgeRightBackward, LOW);
+}
+//HAll Movement
+bool hallAlignWheels(){
+	wheelHallSensorsRead();
+
+	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)){
+		digitalWrite(pinHBridgeLeftForward, HIGH);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, HIGH);
+
+		analogWrite(pinHBridgeLeftPWM, 150);
+		analogWrite(pinHBridgeRightPWM, 150);
+	}
+	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)){
+		digitalWrite(pinHBridgeLeftForward, LOW);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, HIGH);
+
+		analogWrite(pinHBridgeLeftPWM, 150);
+		analogWrite(pinHBridgeRightPWM, 150);
+	}
+	else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)){
+		digitalWrite(pinHBridgeLeftForward, LOW);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, HIGH);
+
+		analogWrite(pinHBridgeLeftPWM, 0);
+		analogWrite(pinHBridgeRightPWM, 150);
+	}
+	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)){
+		digitalWrite(pinHBridgeLeftForward, LOW);
+		digitalWrite(pinHBridgeLeftBackward, LOW);
+		digitalWrite(pinHBridgeRightForward, LOW);
+		digitalWrite(pinHBridgeRightBackward, LOW);
+
+		analogWrite(pinHBridgeLeftPWM, 0);
+		analogWrite(pinHBridgeRightPWM, 0);
+	}
+
+	if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1))
+	{ 
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+//WIP
+bool hallRotateRight(){
+	digitalWrite(pinHBridgeLeftForward, LOW);
+	digitalWrite(pinHBridgeLeftBackward, HIGH);
+	digitalWrite(pinHBridgeRightForward, HIGH);
+	digitalWrite(pinHBridgeRightBackward, LOW);
+
+	analogWrite(pinHBridgeLeftPWM, 150);
+	analogWrite(pinHBridgeRightPWM, 150);
+
+	//don't check instantly, need time for some rotation
+	if(UptimeMillis - hallRotaionLastCheckMilli > hallRotaionCheckRateMilli) {
+		hallMilliPassedCheck = hallMilliPassedCheck + 1; //may need to set this to zero higher scope
+		hallRotaionLastCheckMilli = UptimeMillis; 
+		if (hallMilliPassedCheck > 1)
+		{
+			Serial.println("Time Passed");
+		}
+	}
+
+	if (hallMilliPassedCheck > 1){
+		if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)){
+			digitalWrite(pinHBridgeLeftForward, LOW);
+			digitalWrite(pinHBridgeLeftBackward, HIGH);
+			digitalWrite(pinHBridgeRightForward, HIGH);
+			digitalWrite(pinHBridgeRightBackward, LOW);
+
+			analogWrite(pinHBridgeLeftPWM, 150);
+			analogWrite(pinHBridgeRightPWM, 150);
+		}
+		else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)){
+			digitalWrite(pinHBridgeLeftForward, LOW);
+			digitalWrite(pinHBridgeLeftBackward, LOW);
+			digitalWrite(pinHBridgeRightForward, HIGH);
+			digitalWrite(pinHBridgeRightBackward, LOW);
+
+			analogWrite(pinHBridgeLeftPWM, 150);
+			analogWrite(pinHBridgeRightPWM, 150);
+		}
+		else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)){
+			digitalWrite(pinHBridgeLeftForward, LOW);
+			digitalWrite(pinHBridgeLeftBackward, HIGH);
+			digitalWrite(pinHBridgeRightForward, LOW);
+			digitalWrite(pinHBridgeRightBackward, LOW);
+
+			analogWrite(pinHBridgeLeftPWM, 150);
+			analogWrite(pinHBridgeRightPWM, 150);
+		}
+		else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)){
+			digitalWrite(pinHBridgeLeftForward, LOW);
+			digitalWrite(pinHBridgeLeftBackward, LOW);
+			digitalWrite(pinHBridgeRightForward, LOW);
+			digitalWrite(pinHBridgeRightBackward, LOW);
+
+			analogWrite(pinHBridgeLeftPWM, 0);
+			analogWrite(pinHBridgeRightPWM, 0);
+			return true;
+		}
+		return false;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 //Additional sensors

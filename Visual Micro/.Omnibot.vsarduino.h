@@ -28,7 +28,6 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
-bool hallAlignWheels();
 void FaceTheLight();
 int getIndexOfMaximumValue(int* array, int size);
 void setCDSPins();
@@ -55,13 +54,12 @@ boolean RCcontrolIsMoveRotateRightRequested();
 void actionMoveForward();
 void actionMoveBackward();
 void actionMoveLeftRotate(int motorPWM);
-void actionMoveLeftWheelForward(int motorPWM);
 void actionMoveRightRotate(int motorPWM);
-void actionMoveRightWheelForward(int motorPWM);
-void actionMoveRightWheelBackward(int motorPWM);
 void actionMoveSteer(int motorPWM, int state);
 void actionStationary();
 void actionMoveStop();
+bool hallAlignWheels();
+bool hallRotateRight();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
 
