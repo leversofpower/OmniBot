@@ -4,10 +4,8 @@
 
 #include "State.h"
 
-//State STATE();
-
 State::State(){
-
+	ID = 0;
 }
 void State::setID(int newID)
 {
@@ -23,7 +21,6 @@ void State::setDefinitionID(int stateDefinitionID){
 int State::getDefinitionID() const{
 	return definitionID;
 }
-
 unsigned long State::getDuration() const
 {
 	return durationMillis;
@@ -35,3 +32,4 @@ void State::setStateEnd(unsigned long endTime){
 	endMillis = endTime;
 }
 
+State STATE();
