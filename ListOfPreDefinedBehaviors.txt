@@ -1,0 +1,8 @@
+List of defined behaviors
+
+face the light
+drive twords brightest light
+
+random wander
+face human pir
+

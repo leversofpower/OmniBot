@@ -1,0 +1,50 @@
+/* Pin Assignments Digital */
+//RC Controller
+const int pinRCcontrollerY = 9;
+const int pinRCcontrollerX = 8;
+
+//H-Bridge
+const int pinHBridgeLeftForward = 3;
+const int pinHBridgeLeftBackward = 4;
+const int pinHBridgeLeftPWM = 5;
+const int pinHBridgeRightForward = 7;
+const int pinHBridgeRightBackward = 6; 
+const int pinHBridgeRightPWM = 2;
+const int pinLEDEyeRight0 = 32;
+const int pinLEDEyeRight1 = 38; 
+const int pinLEDEyeRight2 = 31;
+const int pinLEDEyeRight3 = 29;
+const int pinLEDEyeRight4 = 27;
+const int pinLEDEyeRight5 = 30;
+const int pinLEDEyeRight6 = 28;
+const int pinLEDEyeRight7 = 26;
+const int pinLEDEyeRight8 = 37;
+const int pinLEDEyeRight9 = 35;
+const int pinLEDEyeRight10 = 33; 
+const int pinLEDEyeRight11 = 36;
+const int pinLEDEyeRight12 = 34;
+//Left Eye
+const int pinLEDEyeLeft0 = 44;//40
+const int pinLEDEyeLeft1 = 52;
+const int pinLEDEyeLeft2 = 51; 
+const int pinLEDEyeLeft3 = 49; 
+const int pinLEDEyeLeft4 = 47; 
+const int pinLEDEyeLeft5 = 50; 
+const int pinLEDEyeLeft6 = 48; 
+const int pinLEDEyeLeft7 = 46; 
+const int pinLEDEyeLeft8 = 45; 
+const int pinLEDEyeLeft9 = 43;
+const int pinLEDEyeLeft10 = 44;//41
+const int pinLEDEyeLeft11 = 44; 
+const int pinLEDEyeLeft12 = 42;
+const int pinLEDBackPowerButton = 10;
+const int pinRelayPlasmaGlobe = 23;
+const int pinHallSensorLeftWheel = 40;
+const int pinHallSensorRightWheel = 41;
+/* Pin Assignments Analog */
+const int pinAnalogVoltageDivider = 0;
+const int pinAnalogCDSSensor1Frount = 1;
+const int pinAnalogCDSSensor2Back = 2;
+const int pinAnalogCDSSensor3Left = 3;
+const int pinAnalogCDSSensor4Right = 4;
+const int pinAnalogCDSSensor5Top = 5;

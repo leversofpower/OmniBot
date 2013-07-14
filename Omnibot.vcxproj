@@ -69,16 +69,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
-    <None Include="Omnibot.ino">
-      <FileType>CppCode</FileType>
-    </None>
+    <None Include="Omnibot.ino" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="PinDefinition.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="State.h" />
+    <ClInclude Include="StateCollection.h" />
+    <ClInclude Include="StateManager.h" />
     <ClInclude Include="Visual Micro\.Omnibot.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Omnibot.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="State.cpp" />
+    <ClCompile Include="StateCollection.cpp" />
+    <ClCompile Include="StateManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

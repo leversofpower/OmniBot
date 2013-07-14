@@ -11,61 +11,18 @@ Create LCD Message que
 */
 
 /* Includes */
+//#include <MP3.h>
+//http://www.elechouse.com/elechouse/index.php?main_page=product_info&products_id=2193
+#include "StateCollection.h"
+#include "StateManager.h"
+#include "State.h"
+#include "PinDefinition.h"
 #include <Timer.h>
 #include <Event.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 //http://www.dfrobot.com/index.php?route=product/product&filter_name=DFR0063&product_id=135#.Ub9pOZzm8cl
 
-/* Pin Assignments Digital */
-//RC Controller
-const int pinRCcontrollerY = 9;
-const int pinRCcontrollerX = 8;
-//H-Bridge
-const int pinHBridgeLeftForward = 3;
-const int pinHBridgeLeftBackward = 4;
-const int pinHBridgeLeftPWM = 5;
-const int pinHBridgeRightForward = 7;
-const int pinHBridgeRightBackward = 6; 
-const int pinHBridgeRightPWM = 2;
-const int pinLEDEyeRight0 = 32;
-const int pinLEDEyeRight1 = 38; 
-const int pinLEDEyeRight2 = 31;
-const int pinLEDEyeRight3 = 29;
-const int pinLEDEyeRight4 = 27;
-const int pinLEDEyeRight5 = 30;
-const int pinLEDEyeRight6 = 28;
-const int pinLEDEyeRight7 = 26;
-const int pinLEDEyeRight8 = 37;
-const int pinLEDEyeRight9 = 35;
-const int pinLEDEyeRight10 = 33; 
-const int pinLEDEyeRight11 = 36;
-const int pinLEDEyeRight12 = 34;
-//Left Eye
-const int pinLEDEyeLeft0 = 44;//40
-const int pinLEDEyeLeft1 = 52;
-const int pinLEDEyeLeft2 = 51; 
-const int pinLEDEyeLeft3 = 49; 
-const int pinLEDEyeLeft4 = 47; 
-const int pinLEDEyeLeft5 = 50; 
-const int pinLEDEyeLeft6 = 48; 
-const int pinLEDEyeLeft7 = 46; 
-const int pinLEDEyeLeft8 = 45; 
-const int pinLEDEyeLeft9 = 43;
-const int pinLEDEyeLeft10 = 44;//41
-const int pinLEDEyeLeft11 = 44; 
-const int pinLEDEyeLeft12 = 42;
-const int pinLEDBackPowerButton = 10;
-const int pinRelayPlasmaGlobe = 23;
-const int pinHallSensorLeftWheel = 40;
-const int pinHallSensorRightWheel = 41;
-/* Pin Assignments Analog */
-const int pinAnalogVoltageDivider = 0;
-const int pinAnalogCDSSensor1Frount = 1;
-const int pinAnalogCDSSensor2Back = 2;
-const int pinAnalogCDSSensor3Left = 3;
-const int pinAnalogCDSSensor4Right = 4;
-const int pinAnalogCDSSensor5Top = 5;
 const int displayVerbose = 1;
 
 enum state {
@@ -82,13 +39,12 @@ enum state {
 	MoveRotateRight = 50,
 } stateType;
 
+/* Globals */
 /* Library Objects */
 //LiquidCrystal_I2C lcd(0x27,16,2); OLD LCD
 LiquidCrystal_I2C lcd(0x27,20,4);
 //Timers 
 Timer timerEyeBlink;
-
-/* Globals */
 unsigned long UptimeMillis;
 const int serialPrintRefreshRateMilli = 2000;
 unsigned long serialPrintLastUpdateMilli = 0;
@@ -102,7 +58,6 @@ int motorMinimumPWMforActuation = 95; //Is this actually correct?
 float motorBatteryVoltageNow = 0.0;
 float motorBatteryVoltageHigh = 0.0;
 float motorBatteryVoltageLow = 12.0;
-
 
 // Hall Sensors - ned to make a struct out of this
 int wheelHallSensorLeft = 0;
@@ -147,9 +102,14 @@ struct photoCell
 unsigned long automatedBehaviorLastUpdateMilli = 0;
 int automatedBehaviorRefreshRateMilli = 500;
 
+//MP3
+bool hasMP301CommandPlayed = 0;
+//New OOP
+StateCollection OmnibotStateCollection;
 
 void setup() {
 	Serial.begin(9600);
+	Serial1.begin(9600);
 
 	RCx.current = 0;
 	RCx.maximum = 1973;
@@ -183,10 +143,22 @@ void setup() {
 	//digitalWrite(pinRelayPlasmaGlobe, LOW);
 
 	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
+
+
+	/* TODO: MP3 MOVE TO MAIN LOOP NO DELAYS */
+	delay(2000);
+	MP3StartUpPlay();
+	//OOP Start 
+	State initalState;
+	initalState.setID(0); //TODO: I don't like this
+	initalState.setDefinitionID(StateCollection::stateUndefined);
+	
+	//OmnibotStateCollection.addState(initalState);
 }
 
 void loop() {
 	UptimeMillis = millis();
+	
 	//RC Controller
 	RCReadControlPWM();
 	RCAutomationStateSet();
@@ -206,7 +178,97 @@ void loop() {
 	//Battery Monitoring
 	motorBatteryAnalogVoltageDividerRead();
 	//LCD SCreen
+	delay(2000);
 	automationStateDisplay(displayVerbose);
+}
+
+/*MP3 V1.2 REFACTOR*/
+unsigned char cmd_buf[10];
+unsigned char i;
+void ArduinoMP3Shield_SendCMD(unsigned char *cmd_buf, unsigned len)
+{
+	unsigned i;
+	for(i=0; i<len; i++){
+		Serial1.write(cmd_buf[i]);
+	}
+}
+void MP3StartUpPlay(){
+	/** set volume */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x03;          // Length
+	cmd_buf[2] = 0xA7;          // Command
+	cmd_buf[3] = 0x1F;          // new volume
+	cmd_buf[4] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 5);
+
+	/** set play mode play once */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x03;          // Length
+	cmd_buf[2] = 0xA9;          // Command SET MODE
+	cmd_buf[3] = 0x00;          // set mode
+	cmd_buf[4] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 5);
+
+	/** select SD card first music and play */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x04;          // Length
+	cmd_buf[2] = 0xA2;          // Command
+	cmd_buf[3] = 0x00;          // file number high byte
+	cmd_buf[4] = 0x01;          // file number low byte
+	cmd_buf[5] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 6);
+}
+void MP3RCDetected(){
+	/** set volume */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x03;          // Length
+	cmd_buf[2] = 0xA7;          // Command
+	cmd_buf[3] = 0x1F;          // new volume
+	cmd_buf[4] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 5);
+
+	/** set play mode play once */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x03;          // Length
+	cmd_buf[2] = 0xA9;          // Command SET MODE
+	cmd_buf[3] = 0x00;          // set mode
+	cmd_buf[4] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 5);
+
+	/** select SD card first music and play */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x04;          // Length
+	cmd_buf[2] = 0xA2;          // Command
+	cmd_buf[3] = 0x00;          // file number high byte
+	cmd_buf[4] = 0x02;          // file number low byte
+	cmd_buf[5] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 6);
+}
+void MP3RCLost(){
+	/** set volume */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x03;          // Length
+	cmd_buf[2] = 0xA7;          // Command
+	cmd_buf[3] = 0x1F;          // new volume
+	cmd_buf[4] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 5);
+
+	/** set play mode play once */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x03;          // Length
+	cmd_buf[2] = 0xA9;          // Command SET MODE
+	cmd_buf[3] = 0x00;          // set mode
+	cmd_buf[4] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 5);
+
+	/** select SD card first music and play */
+	cmd_buf[0] = 0x7E;          // START
+	cmd_buf[1] = 0x04;          // Length
+	cmd_buf[2] = 0xA2;          // Command
+	cmd_buf[3] = 0x00;          // file number high byte
+	cmd_buf[4] = 0x03;          // file number low byte
+	cmd_buf[5] = 0x7E;          // END
+	ArduinoMP3Shield_SendCMD(cmd_buf, 6);
 }
 
 /* Behaviors */
@@ -253,7 +315,7 @@ void FaceTheLight(){ //WIP
 	// keep turning untill frount registers simalr value to previously highest value is found within 20 ints
 	//}
 }
-int getIndexOfMaximumValue(int* array, int size){
+int getIndexOfMaximumValue(int *array, int size){
 	int maxIndex = 0;
 	int max = array[maxIndex];
 	for (int i=1; i < size; i++){
@@ -684,6 +746,10 @@ void RCAutomationStateSet(){
 	if ((RCy.current > 0) && (RCx.current > 0))
 	{
 		RCActivateState();
+		if (hasMP301CommandPlayed == 0){
+			MP3RCDetected();
+			hasMP301CommandPlayed = 1;}
+
 		//When RC controller is turned on begin testing simple movement routines
 		//hallMovementChecks = 2;
 
@@ -705,6 +771,7 @@ void RCAutomationStateSet(){
 	else
 	{
 		commandStep = 0;
+		hasMP301CommandPlayed = 0;
 		actionMoveStop();
 		automationStateSet(NoRCSignal);
 	}

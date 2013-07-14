@@ -28,8 +28,12 @@ extern "C" void __cxa_pure_virtual() {;}
 
 //
 //
+void ArduinoMP3Shield_SendCMD(unsigned char *cmd_buf, unsigned len);
+void MP3StartUpPlay();
+void MP3RCDetected();
+void MP3RCLost();
 void FaceTheLight();
-int getIndexOfMaximumValue(int* array, int size);
+int getIndexOfMaximumValue(int *array, int size);
 void setCDSPins();
 void setHBridgePins();
 void setEyePins();
@@ -66,5 +70,12 @@ void wheelHallSensorsRead();
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Omnibot.ino"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\PinDefinition.h"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\State.cpp"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\State.h"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateCollection.cpp"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateCollection.h"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateManager.cpp"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateManager.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\resource.h"
 #endif
