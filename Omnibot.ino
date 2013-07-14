@@ -1,3 +1,15 @@
+/*
+NEEDS FIXED:
+NEEDS MEASURED:
+One hall check rotation angle
+one hall check on both wheels distance forward and backward
+TODO:
+Break Blinking into two seperate timers. One for lid down and one for lid up.
+Create array for the states. Add time spent in state for each state. Add last activate time of day.
+State Based LCD Display:
+Create LCD Message que
+*/
+
 /* Includes */
 //#include <MP3.h>
 //http://www.elechouse.com/elechouse/index.php?main_page=product_info&products_id=2193
