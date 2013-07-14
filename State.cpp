@@ -32,4 +32,4 @@ void State::setStateEnd(unsigned long endTime){
 	endMillis = endTime;
 }
 
-State STATE();
+//State STATE();
