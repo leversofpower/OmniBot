@@ -22,32 +22,23 @@ Create LCD Message que
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 //http://www.dfrobot.com/index.php?route=product/product&filter_name=DFR0063&product_id=135#.Ub9pOZzm8cl
+#include "OmniBot.h"
 
 const int displayVerbose = 1;
-
-enum state {
-	stateUndefined = 0,
-	NoRCSignal = 5,
-	Stationary = 10,
-	MoveForward = 20,
-	MoveForwardSteerLeft = 22,
-	MoveForwardSteerRight = 24,
-	MoveBackward = 30,
-	MoveBackwardSteerLeft = 32,
-	MoveBackwardSteerRight = 34,
-	MoveRotateLeft = 40,
-	MoveRotateRight = 50,
-} stateType;
 
 /* Globals */
 /* Library Objects */
 //LiquidCrystal_I2C lcd(0x27,16,2); OLD LCD
-LiquidCrystal_I2C lcd(0x27,20,4);
-//Timers 
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+state stateType;
+
+// Timers 
 Timer timerEyeBlink;
 unsigned long UptimeMillis;
 const int serialPrintRefreshRateMilli = 2000;
 unsigned long serialPrintLastUpdateMilli = 0;
+
 // automation state
 int automationCurrentState = 0;
 unsigned long automationCurrentStateElapsedMillis = 0;
@@ -73,126 +64,41 @@ unsigned long hallRotaionLastCheckMilli = 0; // Last check time
 int hallMilliPassedCheck = 0; //number of completed checks using hallRotaionCheckRateMilli timer
 int hallMovementChecks = 0; //Used to hold automated movement return counts
 
-//LCD Screen
+// LCD Screen
 int LCDPageNumber = 0;
+
 // Angel eye power button 
 int backPowerButtonPWM = 0;
 int backPowerButtonPulseRate = 70;
 int backPowerButtonPulseSteps[] = {0,1,2,5,10,255,20,30,40,50,60,70,80,90,100,255,100,90,80,70,60,50,40,30,20,10,0};
 int backPowerButtonPulsePosition = 0;
 unsigned long backPowerButtonLastPulse = 0;
-struct RCcontrollerPWM
-{
-	int current;
-	int maximum;
-	int resting;
-	int minimum;
-	int tolerence;
-} RCx,RCy;
-struct photoCell
-{
-	int frount;
-	int back;
-	int left;
-	int right;
-	int top;
-} photoCellValue;
+
+RCcontrollerPWM RCx,RCy;
+
+photoCell photoCellValue;
 
 // Automated Behavior
 unsigned long automatedBehaviorLastUpdateMilli = 0;
 int automatedBehaviorRefreshRateMilli = 500;
 
-//MP3
+// MP3
 bool hasMP301CommandPlayed = 0;
-//New OOP
+
+// New OOP
 StateCollection OmnibotStateCollection;
 
-void setup() {
-	Serial.begin(9600);
-	Serial1.begin(9600);
-
-	RCx.current = 0;
-	RCx.maximum = 1973;
-	RCx.resting = 1540;
-	RCx.minimum = 1061;
-	RCx.tolerence = 50;
-
-	RCy.current = 0;
-	RCy.maximum = 1972;
-	RCy.resting = 1510;
-	RCy.minimum = 1059;
-	RCy.tolerence = 50;
-
-	lcd.init();
-	lcd.backlight();
-
-	setHBridgePins();
-	pinMode(pinRCcontrollerY, INPUT);
-	pinMode(pinRCcontrollerX, INPUT);
-	pinMode(pinHallSensorLeftWheel, INPUT);
-	pinMode(pinHallSensorRightWheel, INPUT);
-
-	pinMode(pinLEDBackPowerButton, OUTPUT);
-	pinMode(pinRelayPlasmaGlobe, OUTPUT);
-
-	setEyePins();
-	eyesOpen();
-	setCDSPins();
-
-	//Turn on plasma globe
-	//digitalWrite(pinRelayPlasmaGlobe, LOW);
-
-	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
-
-
-	/* TODO: MP3 MOVE TO MAIN LOOP NO DELAYS */
-	delay(2000);
-	MP3StartUpPlay();
-	//OOP Start 
-	State initalState;
-	initalState.setID(0); //TODO: I don't like this
-	initalState.setDefinitionID(StateCollection::stateUndefined);
-	
-	//OmnibotStateCollection.addState(initalState);
-}
-
-void loop() {
-	UptimeMillis = millis();
-	
-	//RC Controller
-	RCReadControlPWM();
-	RCAutomationStateSet();
-
-	//Eyes
-	timerEyeBlink.update();
-	//Back Power Button
-	backPowerButtonPulseRateChange();
-	backPowerButtonPulse();
-	//Wheel Rotations
-	wheelHallSensorsRead();
-	//CDS Monitoring
-	CDSSensorRead();
-
-	//FaceTheLight(); //WIP
-
-	//Battery Monitoring
-	motorBatteryAnalogVoltageDividerRead();
-	//LCD SCreen
-	delay(2000);
-	automationStateDisplay(displayVerbose);
-}
-
-/*MP3 V1.2 REFACTOR*/
+// MP3 V1.2 REFACTOR
 unsigned char cmd_buf[10];
 unsigned char i;
-void ArduinoMP3Shield_SendCMD(unsigned char *cmd_buf, unsigned len)
-{
+void ArduinoMP3Shield_SendCMD(unsigned char *cmd_buf, unsigned int len) {
 	unsigned i;
-	for(i=0; i<len; i++){
+	for (i = 0; i < len; i++) {
 		Serial1.write(cmd_buf[i]);
 	}
 }
-void MP3StartUpPlay(){
+
+void MP3StartUpPlay() {
 	/** set volume */
 	cmd_buf[0] = 0x7E;          // START
 	cmd_buf[1] = 0x03;          // Length
@@ -218,7 +124,8 @@ void MP3StartUpPlay(){
 	cmd_buf[5] = 0x7E;          // END
 	ArduinoMP3Shield_SendCMD(cmd_buf, 6);
 }
-void MP3RCDetected(){
+
+void MP3RCDetected() {
 	/** set volume */
 	cmd_buf[0] = 0x7E;          // START
 	cmd_buf[1] = 0x03;          // Length
@@ -244,7 +151,8 @@ void MP3RCDetected(){
 	cmd_buf[5] = 0x7E;          // END
 	ArduinoMP3Shield_SendCMD(cmd_buf, 6);
 }
-void MP3RCLost(){
+
+void MP3RCLost() {
 	/** set volume */
 	cmd_buf[0] = 0x7E;          // START
 	cmd_buf[1] = 0x03;          // Length
@@ -271,9 +179,23 @@ void MP3RCLost(){
 	ArduinoMP3Shield_SendCMD(cmd_buf, 6);
 }
 
+int getIndexOfMaximumValue(int *array, int size) {
+	int maxIndex = 0;
+	int max = array[maxIndex];
+	for (int i=1; i < size; i++) {
+		//Serial.println(i);
+		if (max < array[i]) {
+
+			max = array[i];
+			maxIndex = i;
+		}
+	}
+	return maxIndex;
+}
+
 /* Behaviors */
 // Rotate twords light
-void FaceTheLight(){ //WIP
+void FaceTheLight() { //WIP
 	//if(UptimeMillis - automatedBehaviorLastUpdateMilli > automatedBehaviorRefreshRateMilli) {
 	//automatedBehaviorLastUpdateMilli = UptimeMillis; 
 
@@ -295,19 +217,19 @@ void FaceTheLight(){ //WIP
 	sensor[1] = photoCellValue.back;
 	sensor[2] = photoCellValue.left;
 	sensor[3] = photoCellValue.right;
+    
 	// Read all four values
 	// Find the highest value of the four
 	int index = getIndexOfMaximumValue(sensor, 4);
 	Serial.println(index);
+    
 	// if frount then do nothing, else start turning
-	if (index != 0){
+	if (index != 0) {
 		if (index == 3){ //Turn left
 
-		}
-		else if (index == 4){ // Turn right
+		} else if (index == 4) { // Turn right
 
-		}
-		else if (index == 5){ // Turn right heading twords backwards photocell
+		} else if (index == 5) { // Turn right heading twords backwards photocell
 
 		}
 	}
@@ -315,29 +237,17 @@ void FaceTheLight(){ //WIP
 	// keep turning untill frount registers simalr value to previously highest value is found within 20 ints
 	//}
 }
-int getIndexOfMaximumValue(int *array, int size){
-	int maxIndex = 0;
-	int max = array[maxIndex];
-	for (int i=1; i < size; i++){
-		//Serial.println(i);
-		if (max < array[i]){
-
-			max = array[i];
-			maxIndex = i;
-		}
-	}
-	return maxIndex;
-}
 
 //Setup Methods
-void setCDSPins(){
+void setCDSPins() {
 	pinMode(pinAnalogCDSSensor1Frount, INPUT); 
 	pinMode(pinAnalogCDSSensor2Back, INPUT); 
 	pinMode(pinAnalogCDSSensor3Left, INPUT); 
 	pinMode(pinAnalogCDSSensor4Right, INPUT); 
 	pinMode(pinAnalogCDSSensor5Top, INPUT); 
 }
-void setHBridgePins(){
+
+void setHBridgePins() {
 	pinMode(pinHBridgeLeftPWM, OUTPUT); 
 	pinMode(pinHBridgeLeftBackward, OUTPUT); 
 	pinMode(pinHBridgeLeftForward, OUTPUT); 
@@ -345,7 +255,8 @@ void setHBridgePins(){
 	pinMode(pinHBridgeRightBackward, OUTPUT); 
 	pinMode(pinHBridgeRightForward, OUTPUT);
 }
-void setEyePins(){
+
+void setEyePins() {
 	pinMode(pinLEDEyeRight0, OUTPUT); 
 	pinMode(pinLEDEyeRight1, OUTPUT); 
 	pinMode(pinLEDEyeRight2, OUTPUT); 
@@ -378,7 +289,7 @@ void setEyePins(){
 //Automation settings
 void automationStateSet(int stateType){
 	//Set time in current 
-	if (automationCurrentState == stateType){
+	if (automationCurrentState == stateType) {
 		automationCurrentStateElapsedMillis = automationCurrentStateElapsedMillis + (UptimeMillis - automationStateLastMillisMeasure);
 
 		wheelRotationsLeftState = wheelRotationsLeftState + (WheelRotationsRight - wheelRotationsLeftState);
@@ -386,9 +297,8 @@ void automationStateSet(int stateType){
 
 		automationStateLastMillisMeasure = UptimeMillis;
 
-	}
-	else //changed state. reset state dependant globals
-	{
+	} else {
+        //changed state. reset state dependant globals
 		automationCurrentStateElapsedMillis = 0;
 		wheelRotationsLeftState = 0;
 		wheelRotationsRightState = 0;
@@ -396,8 +306,9 @@ void automationStateSet(int stateType){
 
 	automationCurrentState = stateType;
 }
-String automationStateVerboseFormat(){
-	switch (automationCurrentState){
+
+String automationStateVerboseFormat() {
+	switch (automationCurrentState) {
 	case stateUndefined:
 		return("Undefined");
 	case NoRCSignal:
@@ -424,51 +335,52 @@ String automationStateVerboseFormat(){
 }
 
 //Back Power Button
-void backPowerButtonPulse(){
-	if(UptimeMillis - backPowerButtonLastPulse > backPowerButtonPulseRate) {
-		if (backPowerButtonPulsePosition < 24){
+void backPowerButtonPulse() {
+	if (UptimeMillis - backPowerButtonLastPulse > backPowerButtonPulseRate) {
+		if (backPowerButtonPulsePosition < 24) {
 			backPowerButtonLastPulse = UptimeMillis;
 			backPowerButtonPulsePosition = backPowerButtonPulsePosition + 1;
-		}
-		else
-		{ 
+		} else { 
 			backPowerButtonPulsePosition = 0;
 		}
 		analogWrite(pinLEDBackPowerButton, backPowerButtonPulseSteps[backPowerButtonPulsePosition]);
 	}
 }
-void backPowerButtonPulseRateChange(){
+
+void backPowerButtonPulseRateChange() {
 	if ((automationCurrentState == MoveForward) || (automationCurrentState == MoveForwardSteerLeft) || (automationCurrentState == MoveForwardSteerRight)
 		|| (automationCurrentState == MoveBackward) || (automationCurrentState == MoveBackwardSteerLeft) || (automationCurrentState == MoveBackwardSteerRight)
-		|| (automationCurrentState == MoveRotateLeft) || (automationCurrentState == MoveRotateRight)){
+		|| (automationCurrentState == MoveRotateLeft) || (automationCurrentState == MoveRotateRight)) {
 			//check time spent moving to determin speed up
-			if ((automationCurrentStateElapsedMillis > 2000) && (automationCurrentStateElapsedMillis < 5000)){
+			if ((automationCurrentStateElapsedMillis > 2000)
+                && (automationCurrentStateElapsedMillis < 5000))  {
 				backPowerButtonPulseRate = 50; 
-			}
-			else if ((automationCurrentStateElapsedMillis > 5000) && (automationCurrentStateElapsedMillis < 15000)){
+			} else if ((automationCurrentStateElapsedMillis > 5000)
+                && (automationCurrentStateElapsedMillis < 15000)) {
 				backPowerButtonPulseRate = 25;
-			}
-			else if (automationCurrentStateElapsedMillis > 15000){
+			} else if (automationCurrentStateElapsedMillis > 15000) {
 				backPowerButtonPulseRate = 5; // exhausted
 			}
-	}
-	else if ((automationCurrentState == Stationary) ||  (automationCurrentState == NoRCSignal)){
+	} else if ((automationCurrentState == Stationary) || (automationCurrentState == NoRCSignal)) {
+        
 		//Check time spent resting to cool down
-		if ((automationCurrentStateElapsedMillis > 2000) && (automationCurrentStateElapsedMillis < 5000)){
-			backPowerButtonPulseRate = 50; 
-
-		}
-		else if ((automationCurrentStateElapsedMillis > 5000) && (automationCurrentStateElapsedMillis < 30000)){
-			backPowerButtonPulseRate = 80; // normal pulse
-		}
-		else if (automationCurrentStateElapsedMillis > 30000){
+		if ((automationCurrentStateElapsedMillis > 2000)
+            && (automationCurrentStateElapsedMillis < 5000)) {
+            
+			backPowerButtonPulseRate = 50;
+		} else if ((automationCurrentStateElapsedMillis > 5000)
+            && (automationCurrentStateElapsedMillis < 300)) {
+			
+            backPowerButtonPulseRate = 80; // normal pulse
+		} else if (automationCurrentStateElapsedMillis > 30000) {
+            
 			backPowerButtonPulseRate = 170; // resting
 		}
 	}
 }
 
 //Eyes
-void eyesBlink(){
+void eyesBlink() {
 	digitalWrite(pinLEDEyeLeft0, LOW);
 	digitalWrite(pinLEDEyeLeft1, LOW);
 	digitalWrite(pinLEDEyeRight0, LOW);
@@ -537,8 +449,8 @@ void eyesBlink(){
 	digitalWrite(pinLEDEyeRight0, HIGH);
 	digitalWrite(pinLEDEyeRight1, HIGH);
 }
-void eyesOpen()
-{
+
+void eyesOpen() {
 	digitalWrite(pinLEDEyeRight0, HIGH);
 	digitalWrite(pinLEDEyeRight1, HIGH);
 	digitalWrite(pinLEDEyeRight2, HIGH);
@@ -567,7 +479,8 @@ void eyesOpen()
 	digitalWrite(pinLEDEyeLeft11, HIGH);
 	digitalWrite(pinLEDEyeLeft12, HIGH);
 }
-void eyesClose(){
+
+void eyesClose() {
 	digitalWrite(pinLEDEyeRight0, LOW);
 	digitalWrite(pinLEDEyeRight1, LOW);
 	digitalWrite(pinLEDEyeRight2, LOW);
@@ -598,7 +511,7 @@ void eyesClose(){
 }
 
 //Photo Sensor Array
-void CDSSensorRead(){
+void CDSSensorRead() {
 	photoCellValue.frount = analogRead(pinAnalogCDSSensor1Frount);
 	photoCellValue.back = analogRead(pinAnalogCDSSensor2Back);
 	photoCellValue.left = analogRead(pinAnalogCDSSensor3Left);
@@ -607,16 +520,7 @@ void CDSSensorRead(){
 }
 
 //LCD output
-void automationStateDisplay(int displayType){
-	if(UptimeMillis - serialPrintLastUpdateMilli > serialPrintRefreshRateMilli) {
-		serialPrintLastUpdateMilli = UptimeMillis; 
-		if (displayType == displayVerbose) {
-			LCDdisplay(automationStateVerboseFormat());
-			//LCDdisplayOverride();
-		}
-	}
-}
-void LCDdisplayOverride(){
+void LCDdisplayOverride() {
 	lcd.clear();
 	lcd.setCursor(0,0);
 	lcd.print("CDS PhotoCell Values");
@@ -637,9 +541,10 @@ void LCDdisplayOverride(){
 	lcd.print(" Right ");
 	lcd.print(photoCellValue.right);
 }
-void LCDdisplay(String state){
+
+void LCDdisplay(String state) {
 	lcd.clear();
-	switch (LCDPageNumber){
+	switch (LCDPageNumber) {
 	case 1:
 		lcd.setCursor(0, 0);
 		lcd.print("State Information");
@@ -724,98 +629,56 @@ void LCDdisplay(String state){
 		LCDPageNumber = 0; 
 		break;
 	}
+    
 	LCDPageNumber++;
 }
 
+void automationStateDisplay(int displayType) {
+	if (UptimeMillis - serialPrintLastUpdateMilli > serialPrintRefreshRateMilli) {
+		serialPrintLastUpdateMilli = UptimeMillis; 
+		if (displayType == displayVerbose) {
+			LCDdisplay(automationStateVerboseFormat());
+			//LCDdisplayOverride();
+		}
+	}
+}
+
 //Read RC controller
-void RCReadControlPWM()
-{
+void RCReadControlPWM() {
 	RCx.current = pulseIn(pinRCcontrollerX, HIGH, 20000);
-	if (RCx.current != 0){
+	if (RCx.current != 0) {
 		RCx.current = RCx.current == 0 ? RCx.resting : RCx.current;
 		RCx.current = constrain(RCx.current, RCx.minimum, RCx.maximum);
 	}
 
 	RCy.current = pulseIn(pinRCcontrollerY, HIGH, 20000);
-	if (RCy.current != 0){
+	if (RCy.current != 0) {
 		RCy.current = RCy.current == 0 ? RCy.resting : RCy.current;
 		RCy.current = constrain(RCy.current, RCy.minimum, RCy.maximum);
 	}
 }
-void RCAutomationStateSet(){
-	if ((RCy.current > 0) && (RCx.current > 0))
-	{
-		RCActivateState();
-		if (hasMP301CommandPlayed == 0){
-			MP3RCDetected();
-			hasMP301CommandPlayed = 1;}
-
-		//When RC controller is turned on begin testing simple movement routines
-		//hallMovementChecks = 2;
-
-		if ((hallAlignWheels() == true) && (commandStep == 0)){
-			Serial.println("Hall Wheels Aligned");
-			commandStep = 1;
-			delay(5000);
-		}
-
-		if (commandStep == 1){
-			hallMovementChecks = 2;
-			if (hallRotateRight() == true){
-				commandStep = 2;
-				Serial.println("Command step 2 completed");
-				hallMilliPassedCheck = 0;
-			}
-		}
-	}
-	else
-	{
-		commandStep = 0;
-		hasMP301CommandPlayed = 0;
-		actionMoveStop();
-		automationStateSet(NoRCSignal);
-	}
-}
-void RCActivateState(){
-	if(RCcontrolIsMoveForwardRequested()) {
-		actionMoveForward();
-	}
-	else if(RCControlIsMoveBackwardRequested()) {
-		actionMoveBackward();
-	} 
-	else if(RCcontrolIsMoveRotateLeftRequested()){
-		int mtrTurnPWM = abs(map(RCx.current, RCx.resting, RCx.maximum, 0, 255)); 
-		actionMoveLeftRotate(mtrTurnPWM);
-	}
-	else if(RCcontrolIsMoveRotateRightRequested()){
-		int mtrTurnPWM = abs(map(RCx.current, RCx.resting, RCx.minimum, 0, 255));
-		actionMoveRightRotate(mtrTurnPWM);
-	}
-	else{
-		actionStationary();
-	}
-}
 
 // Movement trigger tolerances
-boolean RCcontrolIsMoveForwardRequested()
-{
+bool RCcontrolIsMoveForwardRequested() {
 	return RCy.current < (RCy.resting - RCy.tolerence);
 }
-boolean RCControlIsMoveBackwardRequested()
-{
+
+bool RCControlIsMoveBackwardRequested() {
 	return RCy.current > (RCy.resting  + RCy.tolerence); 
 }
-boolean RCcontrolIsMoveRotateLeftRequested(){
+
+bool RCcontrolIsMoveRotateLeftRequested() {
 	return RCx.current < (RCx.resting  - RCx.tolerence);  
 }
-boolean RCcontrolIsMoveRotateRightRequested(){
+
+bool RCcontrolIsMoveRotateRightRequested() {
 	return RCx.current > (RCx.resting  + RCx.tolerence);
 }
 
 // Movement PWM settings and actuation 
-void actionMoveForward()
-{
+void actionMoveForward() {
 	automationStateSet(MoveForward);
+    
 	/*Why negative numbers? need abs()*/
 	int motorPWM = abs(map(RCy.current, RCy.resting , RCy.maximum, 0, 255));
 	motorPWM = constrain(motorPWM, motorMinimumPWMforActuation, 255);
@@ -830,9 +693,10 @@ void actionMoveForward()
 	analogWrite(pinHBridgeLeftPWM, motorLeftCurentPWM);
 	analogWrite(pinHBridgeRightPWM, motorRightCurentPWM);
 }
-void actionMoveBackward()
-{
+
+void actionMoveBackward() {
 	automationStateSet(MoveBackward);
+    
 	/*Why negative numbers? need abs()*/
 	int motorPWM = abs(map(RCy.current, RCy.resting , RCy.maximum, 0, 255));
 	motorPWM = constrain(motorPWM, motorMinimumPWMforActuation, 255);
@@ -847,7 +711,8 @@ void actionMoveBackward()
 	analogWrite(pinHBridgeLeftPWM, motorLeftCurentPWM);
 	analogWrite(pinHBridgeRightPWM, motorRightCurentPWM);
 }
-void actionMoveLeftRotate(int motorPWM){
+
+void actionMoveLeftRotate(int motorPWM) {
 	automationStateSet(MoveRotateLeft);
 
 	digitalWrite(pinHBridgeLeftForward, LOW);
@@ -858,7 +723,8 @@ void actionMoveLeftRotate(int motorPWM){
 	analogWrite(pinHBridgeLeftPWM, motorPWM);
 	analogWrite(pinHBridgeRightPWM, motorPWM);
 }
-void actionMoveRightRotate(int motorPWM){
+
+void actionMoveRightRotate(int motorPWM) {
 	automationStateSet(MoveRotateRight);
 
 	digitalWrite(pinHBridgeLeftForward, HIGH);
@@ -869,41 +735,32 @@ void actionMoveRightRotate(int motorPWM){
 	analogWrite(pinHBridgeLeftPWM, motorPWM);
 	analogWrite(pinHBridgeRightPWM, motorPWM);
 }
-void actionMoveSteer(int motorPWM, int state)
-{
+
+void actionMoveSteer(int motorPWM, int state) {
 	motorLeftCurentPWM = motorPWM;
 	motorRightCurentPWM = motorPWM;
 	int mtrTurnPWM = 0;
 
-	if (state == MoveForward)
-	{
-		if (RCcontrolIsMoveRotateLeftRequested())
-		{
+	if (state == MoveForward) {
+		if (RCcontrolIsMoveRotateLeftRequested()) {
 			automationStateSet(MoveForwardSteerLeft);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.minimum, 0, 255));
 			motorRightCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
 			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0,255);
-		}
-		else if (RCcontrolIsMoveRotateRightRequested())
-		{
+		} else if (RCcontrolIsMoveRotateRightRequested()) {
 			automationStateSet(MoveForwardSteerRight);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.maximum, 0, 255)); 
 			motorRightCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
 			motorLeftCurentPWM = constrain(mtrTurnPWM + motorRightCurentPWM, 0, 255);
 		}
-	}
-	else if (state = MoveBackward)
-	{
-		if (RCcontrolIsMoveRotateLeftRequested())
-		{
+	} else if (state = MoveBackward) {
+		if (RCcontrolIsMoveRotateLeftRequested()) {
 			automationStateSet(MoveBackwardSteerLeft);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.minimum, 0, 255));
 			motorRightCurentPWM = constrain(mtrTurnPWM + motorLeftCurentPWM, 0, 255);
 			motorLeftCurentPWM = constrain((mtrTurnPWM * -1 ) + motorRightCurentPWM, 0, 255);
 
-		}
-		else if (RCcontrolIsMoveRotateRightRequested())
-		{
+		} else if (RCcontrolIsMoveRotateRightRequested()) {
 			automationStateSet(MoveBackwardSteerRight);
 			mtrTurnPWM = abs(map(RCx.current, RCx.resting , RCx.maximum, 0, 255)); 
 			motorRightCurentPWM = constrain((mtrTurnPWM * -1 ) + motorLeftCurentPWM, 0, 255);
@@ -912,12 +769,8 @@ void actionMoveSteer(int motorPWM, int state)
 		}
 	}
 }
-void actionStationary()
-{
-	automationStateSet(Stationary);
-	actionMoveStop();
-}
-void actionMoveStop(){
+
+void actionMoveStop() {
 	motorLeftCurentPWM = 0;
 	motorRightCurentPWM = 0;
 	digitalWrite(pinHBridgeLeftBackward, LOW);
@@ -925,11 +778,66 @@ void actionMoveStop(){
 	digitalWrite(pinHBridgeRightForward, LOW);
 	digitalWrite(pinHBridgeRightBackward, LOW);
 }
+
+void actionStationary() {
+	automationStateSet(Stationary);
+	actionMoveStop();
+}
+
+void RCAutomationStateSet() {
+	if ((RCy.current > 0) && (RCx.current > 0)) {
+		RCActivateState();
+		if (hasMP301CommandPlayed == 0) {
+			MP3RCDetected();
+			hasMP301CommandPlayed = 1;
+        }
+
+		//When RC controller is turned on begin testing simple movement routines
+		//hallMovementChecks = 2;
+
+		if ((hallAlignWheels() == true) && (commandStep == 0)) {
+			Serial.println("Hall Wheels Aligned");
+			commandStep = 1;
+			delay(5000);
+		}
+
+		if (commandStep == 1) {
+			hallMovementChecks = 2;
+			if (hallRotateRight() == true) {
+				commandStep = 2;
+				Serial.println("Command step 2 completed");
+				hallMilliPassedCheck = 0;
+			}
+		}
+	} else {
+		commandStep = 0;
+		hasMP301CommandPlayed = 0;
+		actionMoveStop();
+		automationStateSet(NoRCSignal);
+	}
+}
+
+void RCActivateState() {
+	if (RCcontrolIsMoveForwardRequested()) {
+		actionMoveForward();
+	} else if (RCControlIsMoveBackwardRequested()) {
+		actionMoveBackward();
+	} else if (RCcontrolIsMoveRotateLeftRequested()) {
+		int mtrTurnPWM = abs(map(RCx.current, RCx.resting, RCx.maximum, 0, 255)); 
+		actionMoveLeftRotate(mtrTurnPWM);
+	} else if (RCcontrolIsMoveRotateRightRequested()) {
+		int mtrTurnPWM = abs(map(RCx.current, RCx.resting, RCx.minimum, 0, 255));
+		actionMoveRightRotate(mtrTurnPWM);
+	} else {
+		actionStationary();
+	}
+}
+
 //HAll Movement
-bool hallAlignWheels(){
+bool hallAlignWheels() {
 	wheelHallSensorsRead();
 
-	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)){
+	if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)) {
 		digitalWrite(pinHBridgeLeftForward, HIGH);
 		digitalWrite(pinHBridgeLeftBackward, LOW);
 		digitalWrite(pinHBridgeRightForward, LOW);
@@ -937,8 +845,7 @@ bool hallAlignWheels(){
 
 		analogWrite(pinHBridgeLeftPWM, 150);
 		analogWrite(pinHBridgeRightPWM, 150);
-	}
-	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)){
+	} else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)) {
 		digitalWrite(pinHBridgeLeftForward, LOW);
 		digitalWrite(pinHBridgeLeftBackward, LOW);
 		digitalWrite(pinHBridgeRightForward, LOW);
@@ -946,8 +853,7 @@ bool hallAlignWheels(){
 
 		analogWrite(pinHBridgeLeftPWM, 150);
 		analogWrite(pinHBridgeRightPWM, 150);
-	}
-	else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)){
+	} else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)) {
 		digitalWrite(pinHBridgeLeftForward, LOW);
 		digitalWrite(pinHBridgeLeftBackward, LOW);
 		digitalWrite(pinHBridgeRightForward, LOW);
@@ -955,8 +861,7 @@ bool hallAlignWheels(){
 
 		analogWrite(pinHBridgeLeftPWM, 0);
 		analogWrite(pinHBridgeRightPWM, 150);
-	}
-	else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)){
+	} else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)) {
 		digitalWrite(pinHBridgeLeftForward, LOW);
 		digitalWrite(pinHBridgeLeftBackward, LOW);
 		digitalWrite(pinHBridgeRightForward, LOW);
@@ -966,17 +871,15 @@ bool hallAlignWheels(){
 		analogWrite(pinHBridgeRightPWM, 0);
 	}
 
-	if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1))
-	{ 
+	if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)) {
 		return true;
-	}
-	else
-	{
+	} else {
 		return false;
 	}
 }
+
 //WIP
-bool hallRotateRight(){
+bool hallRotateRight() {
 	digitalWrite(pinHBridgeLeftForward, LOW);
 	digitalWrite(pinHBridgeLeftBackward, HIGH);
 	digitalWrite(pinHBridgeRightForward, HIGH);
@@ -986,17 +889,16 @@ bool hallRotateRight(){
 	analogWrite(pinHBridgeRightPWM, 150);
 
 	//don't check instantly, need time for some rotation
-	if(UptimeMillis - hallRotaionLastCheckMilli > hallRotaionCheckRateMilli) {
+	if (UptimeMillis - hallRotaionLastCheckMilli > hallRotaionCheckRateMilli) {
 		hallMilliPassedCheck = hallMilliPassedCheck + 1; //may need to set this to zero higher scope
 		hallRotaionLastCheckMilli = UptimeMillis; 
-		if (hallMilliPassedCheck > 1)
-		{
+		if (hallMilliPassedCheck > 1) {
 			Serial.println("Time Passed");
 		}
 	}
 
-	if (hallMilliPassedCheck > 1){
-		if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)){
+	if (hallMilliPassedCheck > 1) {
+		if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 0)) {
 			digitalWrite(pinHBridgeLeftForward, LOW);
 			digitalWrite(pinHBridgeLeftBackward, HIGH);
 			digitalWrite(pinHBridgeRightForward, HIGH);
@@ -1004,8 +906,7 @@ bool hallRotateRight(){
 
 			analogWrite(pinHBridgeLeftPWM, 150);
 			analogWrite(pinHBridgeRightPWM, 150);
-		}
-		else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)){
+		} else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 0)) {
 			digitalWrite(pinHBridgeLeftForward, LOW);
 			digitalWrite(pinHBridgeLeftBackward, LOW);
 			digitalWrite(pinHBridgeRightForward, HIGH);
@@ -1013,8 +914,7 @@ bool hallRotateRight(){
 
 			analogWrite(pinHBridgeLeftPWM, 150);
 			analogWrite(pinHBridgeRightPWM, 150);
-		}
-		else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)){
+		} else if ((wheelHallSensorLeft == 0) && (wheelHallSensorRight == 1)) {
 			digitalWrite(pinHBridgeLeftForward, LOW);
 			digitalWrite(pinHBridgeLeftBackward, HIGH);
 			digitalWrite(pinHBridgeRightForward, LOW);
@@ -1022,8 +922,7 @@ bool hallRotateRight(){
 
 			analogWrite(pinHBridgeLeftPWM, 150);
 			analogWrite(pinHBridgeRightPWM, 150);
-		}
-		else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)){
+		} else if ((wheelHallSensorLeft == 1) && (wheelHallSensorRight == 1)) {
 			digitalWrite(pinHBridgeLeftForward, LOW);
 			digitalWrite(pinHBridgeLeftBackward, LOW);
 			digitalWrite(pinHBridgeRightForward, LOW);
@@ -1034,23 +933,98 @@ bool hallRotateRight(){
 			return true;
 		}
 		return false;
-	}
-	else
-	{
+	} else {
 		return false;
 	}
 }
 
 //Additional sensors
-void motorBatteryAnalogVoltageDividerRead()
-{
+void motorBatteryAnalogVoltageDividerRead() {
 	float sensorValue = analogRead(pinAnalogVoltageDivider);
 	motorBatteryVoltageNow = (sensorValue / 4.092) * .1;
 	motorBatteryVoltageHigh = max(motorBatteryVoltageNow, motorBatteryVoltageHigh);
 	motorBatteryVoltageLow = min(motorBatteryVoltageNow, motorBatteryVoltageLow);
 }
-void wheelHallSensorsRead()
-{
+void wheelHallSensorsRead() {
 	wheelHallSensorLeft = digitalRead(pinHallSensorLeftWheel);
 	wheelHallSensorRight = digitalRead(pinHallSensorRightWheel);
+}
+
+void setup() {
+	Serial.begin(9600);
+	Serial1.begin(9600);
+
+	RCx.current = 0;
+	RCx.maximum = 1973;
+	RCx.resting = 1540;
+	RCx.minimum = 1061;
+	RCx.tolerence = 50;
+
+	RCy.current = 0;
+	RCy.maximum = 1972;
+	RCy.resting = 1510;
+	RCy.minimum = 1059;
+	RCy.tolerence = 50;
+
+	lcd.init();
+	lcd.backlight();
+
+	setHBridgePins();
+	pinMode(pinRCcontrollerY, INPUT);
+	pinMode(pinRCcontrollerX, INPUT);
+	pinMode(pinHallSensorLeftWheel, INPUT);
+	pinMode(pinHallSensorRightWheel, INPUT);
+
+	pinMode(pinLEDBackPowerButton, OUTPUT);
+	pinMode(pinRelayPlasmaGlobe, OUTPUT);
+
+	setEyePins();
+	eyesOpen();
+	setCDSPins();
+
+	//Turn on plasma globe
+	//digitalWrite(pinRelayPlasmaGlobe, LOW);
+
+	int tickEvent = timerEyeBlink.every(11000, eyesBlink);
+
+	/* TODO: MP3 MOVE TO MAIN LOOP NO DELAYS */
+	delay(2000);
+	MP3StartUpPlay();
+    
+	//OOP Start 
+	State initalState;
+	initalState.setID(0); //TODO: I don't like this
+	initalState.setDefinitionID(StateCollection::stateUndefined);
+	
+	//OmnibotStateCollection.addState(initalState);
+}
+
+void loop() {
+	UptimeMillis = millis();
+	
+	//RC Controller
+	RCReadControlPWM();
+	RCAutomationStateSet();
+
+	//Eyes
+	timerEyeBlink.update();
+	
+    //Back Power Button
+	backPowerButtonPulseRateChange();
+	backPowerButtonPulse();
+	
+    //Wheel Rotations
+	wheelHallSensorsRead();
+    
+	//CDS Monitoring
+	CDSSensorRead();
+
+	//FaceTheLight(); //WIP
+
+	//Battery Monitoring
+	motorBatteryAnalogVoltageDividerRead();
+    
+	//LCD SCreen
+	delay(2000);
+	automationStateDisplay(displayVerbose);
 }
