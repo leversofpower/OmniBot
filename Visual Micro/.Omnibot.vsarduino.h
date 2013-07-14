@@ -26,14 +26,12 @@
 typedef unsigned char byte;
 extern "C" void __cxa_pure_virtual() {;}
 
-//
-//
-void ArduinoMP3Shield_SendCMD(unsigned char *cmd_buf, unsigned len);
+void ArduinoMP3Shield_SendCMD(unsigned char *cmd_buf, unsigned int len);
 void MP3StartUpPlay();
 void MP3RCDetected();
 void MP3RCLost();
-void FaceTheLight();
 int getIndexOfMaximumValue(int *array, int size);
+void FaceTheLight();
 void setCDSPins();
 void setHBridgePins();
 void setEyePins();
@@ -45,31 +43,34 @@ void eyesBlink();
 void eyesOpen();
 void eyesClose();
 void CDSSensorRead();
-void automationStateDisplay(int displayType);
 void LCDdisplayOverride();
 void LCDdisplay(String state);
+void automationStateDisplay(int displayType);
 void RCReadControlPWM();
-void RCAutomationStateSet();
-void RCActivateState();
-boolean RCcontrolIsMoveForwardRequested();
-boolean RCControlIsMoveBackwardRequested();
-boolean RCcontrolIsMoveRotateLeftRequested();
-boolean RCcontrolIsMoveRotateRightRequested();
+bool RCcontrolIsMoveForwardRequested();
+bool RCControlIsMoveBackwardRequested();
+bool RCcontrolIsMoveRotateLeftRequested();
+bool RCcontrolIsMoveRotateRightRequested();
 void actionMoveForward();
 void actionMoveBackward();
 void actionMoveLeftRotate(int motorPWM);
 void actionMoveRightRotate(int motorPWM);
 void actionMoveSteer(int motorPWM, int state);
-void actionStationary();
 void actionMoveStop();
+void actionStationary();
+void RCAutomationStateSet();
+void RCActivateState();
 bool hallAlignWheels();
 bool hallRotateRight();
 void motorBatteryAnalogVoltageDividerRead();
 void wheelHallSensorsRead();
+//
+//
 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Omnibot.ino"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\OmniBot.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\PinDefinition.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\State.cpp"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\State.h"

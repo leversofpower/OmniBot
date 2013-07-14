@@ -69,7 +69,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
-    <None Include="Omnibot.ino" />
+    <None Include="Omnibot.ino">
+      <FileType>CppCode</FileType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PinDefinition.h" />
