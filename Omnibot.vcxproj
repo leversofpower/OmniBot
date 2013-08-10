@@ -44,7 +44,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino;C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega;C:\Program Files\arduino-1.0.4\libraries\TimerMaster;C:\Program Files\arduino-1.0.4\libraries\TimerMaster\utility;C:\Program Files\arduino-1.0.4\libraries\Wire;C:\Program Files\arduino-1.0.4\libraries\Wire\utility;C:\Users\gharris\Documents\Arduino\libraries\LiquidCrystal_I2C;C:\Users\gharris\Documents\Arduino\libraries\LiquidCrystal_I2C\utility;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino;C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega;C:\Program Files\arduino-1.0.4\libraries\SoftwareSerial;C:\Program Files\arduino-1.0.4\libraries\SoftwareSerial\utility;C:\Program Files\arduino-1.0.4\libraries\Wire;C:\Program Files\arduino-1.0.4\libraries\Wire\utility;C:\Users\gharris\Documents\Arduino\libraries\LiquidCrystal_I2C;C:\Users\gharris\Documents\Arduino\libraries\LiquidCrystal_I2C\utility;C:\Program Files\arduino-1.0.4\libraries\MP3;C:\Program Files\arduino-1.0.4\libraries\MP3\utility;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\include\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\avr\;c:\program files\arduino-1.0.4\hardware\tools\avr\lib\gcc\avr\4.3.2\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>C:\Users\gharris\Documents\GitHub\OmniBot\Visual Micro\.OmniBot.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>true</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__AVR_ATmega2560__;ARDUINO=104;__AVR__;F_CPU=16000000L;__cplusplus;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -74,6 +74,14 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AnalogVoltageDivider.h" />
+    <ClInclude Include="LCD.h" />
+    <ClInclude Include="LEDPowerButton.h" />
+    <ClInclude Include="MP3player.h" />
+    <ClInclude Include="OmniBot.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClInclude Include="Photocell.h" />
     <ClInclude Include="PinDefinition.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="State.h" />
@@ -85,6 +93,11 @@
     <ResourceCompile Include="Omnibot.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AnalogVoltageDivider.cpp" />
+    <ClCompile Include="LCD.cpp" />
+    <ClCompile Include="LEDPowerButton.cpp" />
+    <ClCompile Include="MP3player.cpp" />
+    <ClCompile Include="Photocell.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="StateCollection.cpp" />
     <ClCompile Include="StateManager.cpp" />
