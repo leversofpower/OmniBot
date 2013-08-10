@@ -6,12 +6,13 @@
 #include "Photocell.h"
 #include "AnalogVoltageDivider.h"
 #include "MP3player.h"
+#include "RC.h"
 
 LCD LCDdisplayManager;
 LiquidCrystal_I2C LCDHardware(0x27, 20, 4);
 MP3 MP3Hardware;
 MP3player MP3manager;
-
+RC RCcontroller(9,8);
 Photocell PhotoCellSensorArray; 
 AnalogVoltageDivider DriveTrainVoltMonitor;
 
@@ -25,6 +26,9 @@ void setup(){
 	delay(5000);
 	MP3manager.volume_high();
 	MP3manager.single_play();
+
+	RCcontroller.setThrottleRange(1059, 1972);
+	RCcontroller.invertThrottle(1);
 }
 
 void loop(){
@@ -32,8 +36,9 @@ void loop(){
 	DriveTrainVoltMonitor.update();
 	LCDdisplayManager.update(LCDHardware);
 
-	MP3manager.playTrack(MP3player::startUp);
-	delay(8000);
+	delay(1000);
+	RCcontroller.updateThrottle();
+	LCDdisplayManager.addMessage(String(RCcontroller.getThrottle()));
 }
 
 void initializeHardware(){

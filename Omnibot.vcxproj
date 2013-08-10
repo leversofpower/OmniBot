@@ -83,6 +83,9 @@
     </ClInclude>
     <ClInclude Include="Photocell.h" />
     <ClInclude Include="PinDefinition.h" />
+    <ClInclude Include="RC.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
     <ClInclude Include="resource.h" />
     <ClInclude Include="State.h" />
     <ClInclude Include="StateCollection.h" />
@@ -98,6 +101,7 @@
     <ClCompile Include="LEDPowerButton.cpp" />
     <ClCompile Include="MP3player.cpp" />
     <ClCompile Include="Photocell.cpp" />
+    <ClCompile Include="RC.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="StateCollection.cpp" />
     <ClCompile Include="StateManager.cpp" />

@@ -1,36 +1,36 @@
 #ifndef __RC_H__
 #define __RC_H__
-
-struct RCRange {
-    int bottom;
-    int top;
-};
+#include <Arduino.h>
 
 class RC {
-    RCRange _throttleRange;
-    RCRange _steeringRange;
+	struct RCRange {
+		int bottom;
+		int top;
+	};
+	RCRange _throttleRange;
+	RCRange _steeringRange;
 
-    int _throttlePin;
-    int _steeringPin;
+	int _throttlePin;
+	int _steeringPin;
 
-    int _currentThrottle;
-    int _currentSteering;
+	int _currentThrottle;
+	int _currentSteering;
+
+	bool _invert;
+
 public:
-    RC(int, int);
+	RC();
+	RC(int, int);
 
-    int getThrottle();
-    int getThrottle(int, int);
-    void updateThrottle();
-
-    void setThrottleRange(int, int);
-    RCRange getThrottleRange();
-
-    int getSteering();
-    int getSteering(int, int);
-    void updateSteering();
-
-    void setSteeringRange(int, int);
-    RCRange getSteeringRange();
-
-    int normalize(int, int, int);
-}
+	int getThrottle();
+	int getThrottle(int, int);
+	void updateThrottle();
+	void setThrottleRange(int, int);
+	int getSteering();
+	int getSteering(int, int);
+	void updateSteering();
+	void setSteeringRange(int, int);
+	int normalize(int, int, int);
+	void invertThrottle(bool);
+};
+#endif

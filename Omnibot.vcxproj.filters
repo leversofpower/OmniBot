@@ -55,6 +55,9 @@
     <ClInclude Include="MP3player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RC.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Omnibot.rc">
@@ -84,6 +87,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MP3player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
