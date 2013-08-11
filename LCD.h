@@ -1,31 +1,31 @@
-// Needs tested
+#ifndef __LCD_H__
+#define __LCD_H__
+
+#define LCD_BUFFER_LEN 20
+
+#include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
-#ifndef _LCD_h
-#define _LCD_h
 
-#if defined(ARDUINO) && ARDUINO >= 100
-#include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
-class LCD
-{
-private:
-	unsigned long lastUpdateTime;
-	unsigned long updateInterval;
-	struct displayMessage
-	{
-		String message;
-	};
-	displayMessage displayQue[20];
-
+class LCD {
+  LiquidCrystal_I2C *_hardware;
+  unsigned int _characters;
+  unsigned int _lines;
+  
+  unsigned long _lastUpdateTime;
+  unsigned long _updateInterval;
+  
+  char *_queue[LCD_BUFFER_LEN];
 public:
-	void init();
-	void update(LiquidCrystal_I2C);
-	void addMessage(String message);
-	void setUpdateInterval(unsigned long);
+  LCD();
+  LCD(LiquidCrystal_I2C *, unsigned int, unsigned int);
+  
+  void update();
+  void addMessage(long);
+  void addMessage(unsigned long);
+  void addMessage(int);
+  void addMessage(unsigned int);
+  void addMessage(char *message);
+  void setUpdateInterval(unsigned long);
 };
 
 #endif
-

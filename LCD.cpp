@@ -1,31 +1,67 @@
-#include "LCD.h"
 #include <LiquidCrystal_I2C.h>
+#include "LCD.h"
 
-void LCD::init()
-{
+LCD::LCD() {}
+
+LCD::LCD(LiquidCrystal_I2C *hardware, unsigned int characters, unsigned int lines) {
+  _hardware = hardware;
+  _characters = characters;
+  _lines = lines;
+  
+  for (int i = 0; i < LCD_BUFFER_LEN; i++) {
+    _queue[i] = new char[characters + 1];
+  }
 }
-void LCD::update(LiquidCrystal_I2C LCDHardware){
-	if (millis() - lastUpdateTime > updateInterval) {
-		//TODO: Add length of display time check
-		LCDHardware.clear();
-		LCDHardware.setCursor(0,0);
-		LCDHardware.print(displayQue[0].message);
-		LCDHardware.setCursor(0,1);
-		LCDHardware.print(displayQue[1].message);
-		LCDHardware.setCursor(0,2);
-		LCDHardware.print(displayQue[2].message);
-		LCDHardware.setCursor(0,3);
-		LCDHardware.print(displayQue[3].message);
-		lastUpdateTime = millis();
-	}
+
+void LCD::update() {
+  if (millis() - _lastUpdateTime > _updateInterval) {
+    _hardware->clear();
+
+    for (int i = 0; i < _lines; i++) {
+      _hardware->setCursor(0, i);
+      _hardware->print(_queue[i]);
+    }
+
+    _lastUpdateTime = millis();
+  }
 }
-void LCD::addMessage(String message){
-	for (int i = 18; i >= 0; i--) //TODO: 18 replace with constant
-	{
-		displayQue[i + 1].message = displayQue[i].message;
-	}
-	displayQue[0].message = String(message);
+
+void LCD::addMessage(long message) {
+  char buffer[_characters];
+  snprintf(buffer, _characters, "%l", message);
+  
+  addMessage(buffer);
 }
-void LCD::setUpdateInterval(unsigned long updateIntervalMillis){
-	updateInterval = updateIntervalMillis;
+
+void LCD::addMessage(unsigned long message) {
+  char buffer[_characters];
+  snprintf(buffer, _characters, "%lu", message);
+  
+  addMessage(buffer);
+}
+
+void LCD::addMessage(int message) {
+  char buffer[_characters];
+  snprintf(buffer, _characters, "%d", message);
+  
+  addMessage(buffer);
+}
+
+void LCD::addMessage(unsigned int message) {
+  char buffer[_characters];
+  snprintf(buffer, _characters, "%du", message);
+  
+  addMessage(buffer);
+}
+
+void LCD::addMessage(char *message) {
+  for (int i = LCD_BUFFER_LEN - 2; i >= 0; i--) {
+    strncpy(_queue[i + 1], _queue[i], _characters);
+  }
+  
+  strncpy(_queue[0], message, _characters);
+}
+
+void LCD::setUpdateInterval(unsigned long interval) {
+  _updateInterval = interval;
 }
