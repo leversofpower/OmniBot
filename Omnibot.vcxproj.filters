@@ -58,6 +58,9 @@
     <ClInclude Include="RC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HBridge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Omnibot.rc">
@@ -90,6 +93,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="RC.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HBridge.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

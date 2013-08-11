@@ -26,9 +26,9 @@
 typedef unsigned char byte;
 extern "C" void __cxa_pure_virtual() {;}
 
-//
-//
 void initializeHardware();
+//
+//
 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"

@@ -6,6 +6,8 @@ class RC {
 	struct RCRange {
 		int bottom;
 		int top;
+		int deadBandTop;
+		int deadBandBottom;
 	};
 	RCRange _throttleRange;
 	RCRange _steeringRange;
@@ -16,21 +18,15 @@ class RC {
 	int _currentThrottle;
 	int _currentSteering;
 
-	bool _invert;
+	bool _invertThrottle;
+	int DeadBandTop_get(int maximumPWM, int minimumPWM);
+	int DeadBandBottom_get(int maximumPWM, int minimumPWM);
 
 public:
-	RC();
-	RC(int, int);
-
+	RC(int throttlePin, int steeringPin, int throttleTop, int throttleBottom, int steeringTop, int steeringBottom, bool invertedThrottle);
 	int getThrottle();
-	int getThrottle(int, int);
-	void updateThrottle();
-	void setThrottleRange(int, int);
 	int getSteering();
-	int getSteering(int, int);
-	void updateSteering();
-	void setSteeringRange(int, int);
-	int normalize(int, int, int);
-	void invertThrottle(bool);
+	int normalizeThrottle(int);
+	int normalizeSteering(int);
 };
 #endif

@@ -12,39 +12,31 @@ LCD LCDdisplayManager;
 LiquidCrystal_I2C LCDHardware(0x27, 20, 4);
 MP3 MP3Hardware;
 MP3player MP3manager;
-RC RCcontroller(9,8);
+RC RCcontroller(9, 8, 1972, 1059, 1980, 1048, 1);
 Photocell PhotoCellSensorArray; 
 AnalogVoltageDivider DriveTrainVoltMonitor;
 
-void setup(){
+void initializeHardware(){
 	Serial.begin(9600);
 	Serial1.begin(9600);
-
-	initializeHardware();
-	LCDdisplayManager.addMessage("Hello Human...");
-
-	delay(5000);
-	MP3manager.volume_high();
-	MP3manager.single_play();
-
-	RCcontroller.setThrottleRange(1059, 1972);
-	RCcontroller.invertThrottle(1);
-}
-
-void loop(){
-	PhotoCellSensorArray.update();
-	DriveTrainVoltMonitor.update();
-	LCDdisplayManager.update(LCDHardware);
-
-	delay(1000);
-	RCcontroller.updateThrottle();
-	LCDdisplayManager.addMessage(String(RCcontroller.getThrottle()));
-}
-
-void initializeHardware(){
 	PhotoCellSensorArray.init();
 	DriveTrainVoltMonitor.init();
 	LCDHardware.init();
 	LCDHardware.backlight();
 	LCDdisplayManager.setUpdateInterval(250);
 }
+
+void setup(){
+	initializeHardware();
+	LCDdisplayManager.addMessage("Omnibot 2013");
+}
+
+void loop(){
+	PhotoCellSensorArray.update();
+	DriveTrainVoltMonitor.update();
+	LCDdisplayManager.update(LCDHardware);
+	delay(500);
+	LCDdisplayManager.addMessage(String(RCcontroller.getThrottle()) + " / " + String(RCcontroller.getSteering()));
+}
+
+

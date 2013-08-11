@@ -75,6 +75,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AnalogVoltageDivider.h" />
+    <ClInclude Include="HBridge.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
     <ClInclude Include="LCD.h" />
     <ClInclude Include="LEDPowerButton.h" />
     <ClInclude Include="MP3player.h" />
@@ -97,6 +100,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AnalogVoltageDivider.cpp" />
+    <ClCompile Include="HBridge.cpp" />
     <ClCompile Include="LCD.cpp" />
     <ClCompile Include="LEDPowerButton.cpp" />
     <ClCompile Include="MP3player.cpp" />
