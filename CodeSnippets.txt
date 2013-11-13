@@ -39,3 +39,6 @@ void BackPowerButtonPulseRateChange(){
 			backPowerButtonPulseRate = 90; // resting
 		}
 	}
+
+	char str[7];
+	//LCDdisplayManager.addMessage(dtostrf(mainCompass.directionalHeading, 5, 2, str));

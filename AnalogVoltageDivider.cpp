@@ -1,7 +1,3 @@
-// 
-// 
-// 
-
 #include "AnalogVoltageDivider.h"
 #include "Arduino.h"
 

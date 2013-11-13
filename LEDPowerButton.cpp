@@ -1,13 +1,9 @@
-// Untested
-// 
-// 
-
 #include "LEDPowerButton.h"
 
 void LEDPowerButton::init(int LEDPWMpin)
 {
 	PWMdigitalPin = LEDPWMpin;
-	PulseRate = 70;
+	PulseRate = 90; //time between beats
 	PulseSequencePosition = 0;
 	LastPulseTime = 0;
 	loadDefaultPulse();
@@ -19,10 +15,10 @@ void LEDPowerButton::loadDefaultPulse(){
 		PulseSequence[i] = defaultPulseSequence[i];
 	}
 }
-void LEDPowerButton::update(unsigned long UptimeMillis){
-	if (UptimeMillis - lastPulseTime > PulseRate) {
+void LEDPowerButton::update(){
+	if (millis() - lastPulseTime > PulseRate) {
 		if (PulseSequencePosition < 24) {
-			lastPulseTime = UptimeMillis;
+			lastPulseTime = millis();
 			PulseSequencePosition = ++PulseSequencePosition;
 		} else { 
 			PulseSequencePosition = 0;
@@ -34,5 +30,3 @@ void LEDPowerButton::update(unsigned long UptimeMillis){
 void LEDPowerButton::setPulseRate(int rate){
 	PulseRate = rate;
 }
-//LEDPowerButton LEDPOWERBUTTON;
-

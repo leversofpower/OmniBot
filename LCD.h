@@ -25,6 +25,7 @@ public:
   void addMessage(int);
   void addMessage(unsigned int);
   void addMessage(char *message);
+  void addMessage(String *message);
   void setUpdateInterval(unsigned long);
 };
 

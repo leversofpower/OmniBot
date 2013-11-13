@@ -23,7 +23,7 @@ private:
 public:
 	void init(int LEDPWMpin);
 	void setPulseRate(int rate);
-	void update(unsigned long UpTimeMillis);
+	void update();
 };
 
 //extern LEDPowerButton LEDPOWERBUTTON;
