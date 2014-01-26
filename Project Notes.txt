@@ -14,3 +14,17 @@ ch2 rest 1502 - 1509 / Varience 7
 high 1968 - 1972 direction right / Varience 4
 low 1056 - 1062 direction left / Varience 6
 Average Varience 7.6
+
+
+andriod control
+up = 1
+down = 2
+right = 4
+left = 3
+select = 9
+start = A
+triangle = 8
+circle = 6
+square = 7
+x = 5
+

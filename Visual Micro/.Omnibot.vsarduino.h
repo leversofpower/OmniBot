@@ -29,20 +29,24 @@
 typedef unsigned char byte;
 extern "C" void __cxa_pure_virtual() {;}
 
+//
+//
 void initializeHardware();
-//
-//
+void BluetoothUpdate();
+void DateTimeSerialPrint();
 void ButtonQuickPress();
 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\variants\mega\pins_arduino.h" 
 #include "C:\Program Files\arduino-1.0.4\hardware\arduino\cores\arduino\arduino.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Omnibot.ino"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\Adafruit_NeoPixel.cpp"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\Adafruit_NeoPixel.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\AnalogVoltageDivider.cpp"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\AnalogVoltageDivider.h"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\BluetoothController.cpp"
+#include "C:\Users\gharris\Documents\GitHub\OmniBot\BluetoothController.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\ButtonMomentaryNoLed.cpp"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\ButtonMomentaryNoLed.h"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\Clock.cpp"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\Clock.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Compass.cpp"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\Compass.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\HBridge.cpp"
@@ -65,11 +69,5 @@ void ButtonQuickPress();
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\RTC.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\RTC_DS1307.cpp"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\RTC_DS1307.h"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\State.cpp"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\State.h"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateCollection.cpp"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateCollection.h"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateManager.cpp"
-#include "C:\Users\gharris\Documents\GitHub\OmniBot\StateManager.h"
 #include "C:\Users\gharris\Documents\GitHub\OmniBot\resource.h"
 #endif

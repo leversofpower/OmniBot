@@ -28,15 +28,6 @@
     <ClInclude Include="PinDefinition.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="State.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="StateManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="StateCollection.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="LCD.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -73,10 +64,13 @@
     <ClInclude Include="RTC_DS1307.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Clock.h">
+    <ClInclude Include="ButtonMomentaryNoLed.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ButtonMomentaryNoLed.h">
+    <ClInclude Include="BluetoothController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Adafruit_NeoPixel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -86,15 +80,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="State.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="StateManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="StateCollection.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LCD.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -128,10 +113,16 @@
     <ClCompile Include="RTC_DS1307.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Clock.cpp">
+    <ClCompile Include="ButtonMomentaryNoLed.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ButtonMomentaryNoLed.cpp">
+    <ClCompile Include="BluetoothController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Emic 2 Code.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Adafruit_NeoPixel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
